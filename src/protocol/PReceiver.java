@@ -1,20 +1,28 @@
 package protocol;
 
 import java.net.DatagramSocket;
+import java.net.DatagramPacket;
 import java.net.SocketException;
+import java.io.IOException;
 
-public class PReceiver implements Runnable {
+public class PReceiver {
+	private int time;
 	private DatagramSocket datagramSocket;
+	private DatagramPacket datagramPacket;
 	
-	public PReceiver(int port) {
+	//boolean determinará se thread deve continuar rodando
+	public boolean alive;
+	
+	public PReceiver(int port, int time) {
+		this.time = time;
+		alive = true;
+		datagramSocket = null;
 		try {
 			datagramSocket = new DatagramSocket(port);
-		} catch (SocketException se) {
-			
-		}
+		} catch (SocketException se) {}
 	}
 	
-	public void run() {
-		
+	String getMessage() {
+		return message;
 	}
 }
