@@ -4,13 +4,6 @@ import java.awt.EventQueue;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.InputStream;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Scanner;
@@ -22,7 +15,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
 
-import security.PasswordSecurity;
+import utility.server.ServerAPI;
 
 /**
  * Janela do servidor
@@ -107,80 +100,36 @@ class listTester implements Runnable {
 	public void run() {
 		Scanner in = new Scanner(System.in);
 		String usr, pw;
+		int cadastro;
 		while (true) {
 			System.out.println("Insira usr");
 			usr = in.nextLine();
 			System.out.println("Insira pw");
 			pw = in.nextLine();
-			String nicepw = null;
-			try {
-				Socket connectionSocket = new Socket("localhost", 2020);
-				OutputStream outToServer = connectionSocket.getOutputStream();
-				InputStream inFromServer = connectionSocket.getInputStream();
-				
-				System.out.println("Cadastro(0) ou Login(1)?");
-				// 0 = cadastro, 1 = login				
-				outToServer.write(Integer.parseInt(in.nextLine()));
-				
-				byte[] buffer = new byte[256];
-
-				outToServer.write(usr.length());
-				toByteArray(buffer, usr);
-				outToServer.write(buffer, 0, usr.length());
-				
-				// recebe o salt, que sempre tera 32 chars
-				inFromServer.read(buffer, 0, 32);
-				byte[] salt = PasswordSecurity.fromHex(byteArraytoString(buffer, 32));
-				try {
-					nicepw = PasswordSecurity.generateStrongPasswordHash(pw, salt).split(":")[2];
-				} catch (NoSuchAlgorithmException | InvalidKeySpecException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
+			System.out.println("Cadastro(0) ou Login(1)?");
+			cadastro = Integer.parseInt(in.nextLine());
+			int codigo = ServerAPI.loginCadastro(usr, pw, cadastro);
+			// sucesso
+			if (codigo == 1) {
+				// login
+				if (cadastro == 1) {
+					System.out.println("Login efetuado com sucesso");
+				} else { // cadastro
+					System.out.println("Cadastro efetuado com sucesso");
 				}
-//				outToServer.write(nicepw.length()); sempre 128
-				toByteArray(buffer, nicepw);
-				outToServer.write(buffer, 0, 128);
-				
-				connectionSocket.close();
-			} catch (UnknownHostException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (NoSuchAlgorithmException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			} else if (codigo == 0) { // falhou
+				// login
+				if (cadastro == 1) {
+					System.out.println("Usuário ou senha incorretos");
+				} else { // cadastro
+					System.out.println("Nome de usuário indisponível " + usr);
+				}
+			} else { // codigo -1
+				System.out.println("Usuário já está online");
 			}
 		}
 		
-	}
-	
-	/**
-	 * Coloca uma cadeia num arranjo de bytes.
-	 * @param buf Arranjo de bytes que deve receber a String str.
-	 * @param str String que deve ser colocada no arranjo buf.
-	 */
-	private void toByteArray(byte[] buf, String str) {
-		for (int i = 0; i < str.length(); i++) {
-			buf[i] = (byte) str.charAt(i);
-		}
-	}
-	
-	/**
-	 * Cria uma cadeia de caracteres a partir de um arranjo de bytes.
-	 * @param buf Buffer que deve ser transformado em uma cadeia de caracteres.
-	 * @param strlen Tamanho da cadeia de caracteres.
-	 * @return Uma cadeia composta pelos caracteres de buf.
-	 */
-	private String byteArraytoString(byte[] buf, int strlen) {
-		String retorno = "";
-		for (int i = 0; i < strlen; i++) {
-			retorno += (char) buf[i];
-		}
-		return retorno;
-	}
-	
+	}	
 }
 
 /**
