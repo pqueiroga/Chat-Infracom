@@ -11,7 +11,8 @@ import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
-import security.PasswordSecurity;
+import utility.buffer.BufferMethods;
+import utility.security.PasswordSecurity;
 
 /**
  * Classe que executa as funcoes de login e cadastro.
@@ -42,7 +43,7 @@ public class ServidorCadastroLogin implements Runnable {
 			
 			int strlen = inFromClient.read();
 			inFromClient.read(buffer, 0, strlen);
-			String usrName = byteArraytoString(buffer, strlen);
+			String usrName = BufferMethods.byteArraytoString(buffer, strlen);
 			
 			String usrSalt = null;
 			synchronized (usuariosCadastrados) {
@@ -50,27 +51,29 @@ public class ServidorCadastroLogin implements Runnable {
 			}
 			if (usrSalt == null) { // se nao tiver salt, gera. se tiver ai manda o que tem
 				byte[] salt = PasswordSecurity.getSalt().getBytes("ASCII");
-				System.out.println(salt + " has length: " + salt.length);
+//				System.out.println(salt + " has length: " + salt.length);
 				usrSalt = PasswordSecurity.toHex(salt);
-				System.out.println(usrSalt + " has length: " + usrSalt.length());
+//				System.out.println(usrSalt + " has length: " + usrSalt.length());
 
 			}
-			toByteArray(buffer, usrSalt);
+			BufferMethods.toByteArray(buffer, usrSalt);
 			// usrSalt sempre tera 32 caracteres.
 			outToClient.write(buffer, 0, 32);
 			
 //			strlen = inFromClient.read(); sempre 128
 			inFromClient.read(buffer, 0, 128);
-			String usrPw = byteArraytoString(buffer, 128);
+			String usrPw = BufferMethods.byteArraytoString(buffer, 128);
 			
 			if (cadastroLogin == 0) { // cadastro
 				synchronized (usuariosCadastrados) {
 					if(cadastroBinario(usuariosCadastrados, usrName, usrPw, usrSalt)) {
 						// conseguiu cadastrar
 						System.out.println("Cadastro OK de " + usrName + ":" + usrPw);
+						outToClient.write(1);
 					} else {
 						// nao conseguiu cadastrar
 						System.out.println("Não consegui cadastrar " + usrName + ":" + usrPw);
+						outToClient.write(0);;
 					}
 				}
 			} else { // login
@@ -85,16 +88,19 @@ public class ServidorCadastroLogin implements Runnable {
 					synchronized (listaDeUsuarios) {
 						if (usuarioListaOnline(listaDeUsuarios, usrName)) {
 							System.out.println("Usuario já está online");
+							outToClient.write(-1);
 						} else {
 							listaDeUsuarios.add( usrName + " ("
 									+ connectionSocket.getInetAddress().getHostAddress() + ", "
 									+ connectionSocket.getPort() + ")");
 							listaDeUsuarios.sort(String::compareToIgnoreCase);
 							listaDeUsuarios.notify();
+							outToClient.write(1);
 						}
 					}
 				} else {
-					System.out.println("Usuario ou senha incorretos");
+					System.out.println("Usuário ou senha incorretos");
+					outToClient.write(0);
 				}
 			} // TODO logout
 			connectionSocket.close();
@@ -136,21 +142,7 @@ public class ServidorCadastroLogin implements Runnable {
 		}
 		return !uniqueUsr;
 	}
-	
-	/**
-	 * Cria uma cadeia de caracteres a partir de um arranjo de bytes.
-	 * @param buf Buffer que deve ser transformado em uma cadeia de caracteres.
-	 * @param strlen Tamanho da cadeia de caracteres.
-	 * @return Uma cadeia composta pelos caracteres de buf.
-	 */
-	private String byteArraytoString(byte[] buf, int strlen) {
-		String retorno = "";
-		for (int i = 0; i < strlen; i++) {
-			retorno += (char) buf[i];
-		}
-		return retorno;
-	}
-	
+		
 	/**
 	 * busca binaria para, caso usuario esteja disponivel,
 	 *  cadastrar no lugar certo (mantendo ordenacao).
@@ -299,16 +291,4 @@ public class ServidorCadastroLogin implements Runnable {
 		}
 		return usrSalt;
 	}
-	
-	/**
-	 * Coloca uma cadeia num arranjo de bytes.
-	 * @param buf Arranjo de bytes que deve receber a String str.
-	 * @param str String que deve ser colocada no arranjo buf.
-	 */
-	private void toByteArray(byte[] buf, String str) {
-		for (int i = 0; i < str.length(); i++) {
-			buf[i] = (byte) str.charAt(i);
-		}
-	}
-
 }
