@@ -100,7 +100,7 @@ public class ServidorCadastroLogin implements Runnable {
 								int port = Integer.parseInt(BufferMethods.byteArraytoString(buffer, 5));
 								
 								/* esta parte foi retirada pois o IP que ele recebe é o 0.0.0.0
-								 * troquei pra que o servidor pegue o IP da outra pota da conexão
+								 * troquei pra que o servidor pegue o IP da outra ponta da conexão
 								 * com connectionSocket mesmo.
 								 */
 								// lê comprimento da string IP
