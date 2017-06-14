@@ -6,7 +6,10 @@ import java.io.PipedOutputStream;
 import java.io.PipedInputStream;
 import java.io.IOException;
 
-/*	PacketReceiver, implementa parte receptora de datagramas da Socket	*/
+/**
+ * 	PacketReceiver, implementa parte receptora de datagramas da Socket.	
+ * @author Gabriel Barbosa
+ * */
 
 public class PReceiver implements Runnable {
 	/*	time de timeout
@@ -15,11 +18,16 @@ public class PReceiver implements Runnable {
 	private DatagramSocket datagramSocket;
 	private DatagramPacket datagramPacket;
 	private PipedOutputStream dataOut;
-	private byte buf[];
 	
 	//boolean determinará se thread deve continuar rodando
 	public boolean alive;
 	
+	/**
+	 * Cria parte receptora de datagramas de uma Socket.
+	 * @param dataReader PipedInputStream da thread que receberá os dados da Socket.
+	 * @param datagramSocket Socket de datagramas que receberá dados.
+	 * @param datagramPacket DatagramPacket com buffer para receber datagramas.
+	 */
 	public PReceiver(PipedInputStream dataReader, DatagramSocket datagramSocket, DatagramPacket datagramPacket) {
 		alive = true;
 		dataOut = null;
@@ -49,7 +57,11 @@ public class PReceiver implements Runnable {
 		}
 	}
 	
-	/*	Método para extrair mensagem de segmento */
+	/**
+	 * Recebe segmento e transorma em mensagem.
+	 * @param datagram Segmento a ser desencapsulado.
+	 * @return Array de bytes contendo mensagem.
+	 */
 	private byte[] decapsulateDatagram(DatagramPacket datagram) {
 		byte message [] = null;
 		
@@ -57,6 +69,11 @@ public class PReceiver implements Runnable {
 	}
 	
 	/*	Método para julgar datagrama e decidir como proceder */
+	/**
+	 * Método para julgar segmentos e decidir como proceder.
+	 * @param toJudge Segmento a ser julgado.
+	 * @return Integer representando possibilidade de resposta.
+	 */
 	private int judgeDatagram(DatagramPacket toJudge) {
 		return 0;
 	}
