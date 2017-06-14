@@ -2,7 +2,6 @@ package protocol;
 
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
-import java.net.SocketException;
 import java.io.PipedOutputStream;
 import java.io.PipedInputStream;
 import java.io.IOException;
@@ -21,11 +20,10 @@ public class PReceiver implements Runnable {
 	//boolean determinará se thread deve continuar rodando
 	public boolean alive;
 	
-	public PReceiver(int port, PipedInputStream dataReader, DatagramSocket datagramSocket) {
+	public PReceiver(PipedInputStream dataReader, DatagramSocket datagramSocket, DatagramPacket datagramPacket) {
 		alive = true;
 		dataOut = null;
-		buf = new byte[1500];
-		datagramPacket = new DatagramPacket(buf, buf.length);
+		this.datagramPacket = datagramPacket;
 		this.datagramSocket = datagramSocket;
 		try {
 			dataOut = new PipedOutputStream(dataReader);
