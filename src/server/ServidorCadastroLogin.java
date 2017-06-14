@@ -38,64 +38,85 @@ public class ServidorCadastroLogin implements Runnable {
 			OutputStream outToClient = connectionSocket.getOutputStream();
 			InputStream inFromClient = connectionSocket.getInputStream();
 			
-			int cadastroLogin = inFromClient.read();
+			// recebe operacao
+			int operacao = inFromClient.read();
 			byte[] buffer = new byte[256];
 			
+			// recebe nome de usuario
 			int strlen = inFromClient.read();
 			inFromClient.read(buffer, 0, strlen);
-			String usrName = BufferMethods.byteArraytoString(buffer, strlen);
+			String username = BufferMethods.byteArraytoString(buffer, strlen);
 			
 			String usrSalt = null;
 			synchronized (usuariosCadastrados) {
-				usrSalt = getUsrSalt(usuariosCadastrados, usrName);
+				usrSalt = getUsrSalt(usuariosCadastrados, username);
 			}
 			if (usrSalt == null) { // se nao tiver salt, gera. se tiver ai manda o que tem
 				byte[] salt = PasswordSecurity.getSalt().getBytes("ASCII");
-//				System.out.println(salt + " has length: " + salt.length);
 				usrSalt = PasswordSecurity.toHex(salt);
-//				System.out.println(usrSalt + " has length: " + usrSalt.length());
 
 			}
 			BufferMethods.toByteArray(buffer, usrSalt);
 			// usrSalt sempre tera 32 caracteres.
 			outToClient.write(buffer, 0, 32);
 			
-//			strlen = inFromClient.read(); sempre 128
+			// recebe senha
 			inFromClient.read(buffer, 0, 128);
 			String usrPw = BufferMethods.byteArraytoString(buffer, 128);
 			
-			if (cadastroLogin == 0) { // cadastro
+			if (operacao == 0) { // cadastro
 				synchronized (usuariosCadastrados) {
-					if(cadastroBinario(usuariosCadastrados, usrName, usrPw, usrSalt)) {
+					if(cadastroBinario(usuariosCadastrados, username, usrPw, usrSalt)) {
 						// conseguiu cadastrar
-						System.out.println("Cadastro OK de " + usrName + ":" + usrPw);
+						System.out.println("Cadastro OK de " + username);
 						outToClient.write(1);
 					} else {
 						// nao conseguiu cadastrar
-						System.out.println("Não consegui cadastrar " + usrName + ":" + usrPw);
-						outToClient.write(0);;
+						System.out.println("Não consegui cadastrar " + username);
+						outToClient.write(0);
 					}
 				}
 			} else { // login
 				// atualizar listaDeUsuarios online
 				boolean usrExiste = false;
 				synchronized (usuariosCadastrados) {
-					usrExiste = usrExisteBinario(usuariosCadastrados, usrName, usrPw);
+					usrExiste = usrExisteBinario(usuariosCadastrados, username, usrPw);
 				}
 				// checa se username existe, se password bate
 				if (usrExiste) {
 					// checa se usuario ja esta online
 					synchronized (listaDeUsuarios) {
-						if (usuarioListaOnline(listaDeUsuarios, usrName)) {
+						if (usuarioListaOnline(listaDeUsuarios, username)) {
 							System.out.println("Usuario já está online");
-							outToClient.write(-1);
+							outToClient.write(2);
 						} else {
-							listaDeUsuarios.add( usrName + " ("
-									+ connectionSocket.getInetAddress().getHostAddress() + ", "
-									+ connectionSocket.getPort() + ")");
-							listaDeUsuarios.sort(String::compareToIgnoreCase);
-							listaDeUsuarios.notify();
 							outToClient.write(1);
+							// descobre se o cliente conseguiu um servidor
+							int servOK = inFromClient.read();
+							if (servOK == 1) {
+								
+								// lê o número de porta
+								inFromClient.read(buffer, 0, 5);
+								int port = Integer.parseInt(BufferMethods.byteArraytoString(buffer, 5));
+								
+								/* esta parte foi retirada pois o IP que ele recebe é o 0.0.0.0
+								 * troquei pra que o servidor pegue o IP da outra pota da conexão
+								 * com connectionSocket mesmo.
+								 */
+								// lê comprimento da string IP
+//								int iplen = inFromClient.read();
+								// lê IP
+//								inFromClient.read(buffer, 0, iplen);
+//								String IP = BufferMethods.byteArraytoString(buffer, iplen);
+								
+								listaDeUsuarios.add( username + " ("
+										+ connectionSocket.getInetAddress().getHostAddress() + ", "
+										+ port + ")");
+								listaDeUsuarios.sort(String::compareToIgnoreCase);
+								listaDeUsuarios.notify();
+							} else {
+								System.out.println("o cara n conseguiu achar porta pro servidor lol");
+							}
 						}
 					}
 				} else {

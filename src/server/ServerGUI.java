@@ -4,8 +4,10 @@ import java.awt.EventQueue;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Scanner;
 
 import javax.swing.JFrame;
@@ -100,33 +102,51 @@ class listTester implements Runnable {
 	public void run() {
 		Scanner in = new Scanner(System.in);
 		String usr, pw;
-		int cadastro;
+		int operacao;
 		while (true) {
 			System.out.println("Insira usr");
 			usr = in.nextLine();
 			System.out.println("Insira pw");
 			pw = in.nextLine();
 			System.out.println("Cadastro(0) ou Login(1)?");
-			cadastro = Integer.parseInt(in.nextLine());
-			int codigo = ServerAPI.loginCadastro(usr, pw, cadastro);
-			// sucesso
-			if (codigo == 1) {
-				// login
-				if (cadastro == 1) {
-					System.out.println("Login efetuado com sucesso");
-				} else { // cadastro
+			operacao = Integer.parseInt(in.nextLine());
+			if (operacao == 0) { // cadastro
+				boolean cadastroOK = ServerAPI.cadastro(usr, pw);
+				if (cadastroOK) {
 					System.out.println("Cadastro efetuado com sucesso");
-				}
-			} else if (codigo == 0) { // falhou
-				// login
-				if (cadastro == 1) {
-					System.out.println("Usuário ou senha incorretos");
-				} else { // cadastro
+				} else {
 					System.out.println("Nome de usuário indisponível " + usr);
 				}
-			} else { // codigo -1
-				System.out.println("Usuário já está online");
+			} else if (operacao == 1) { // login
+				Entry<ServerSocket, Integer> loginTuple = ServerAPI.login(usr, pw);
+				int status = loginTuple.getValue().intValue();
+				ServerSocket welcomeSocket = loginTuple.getKey();
+				if (welcomeSocket != null) System.out.println(welcomeSocket.toString());
+				if (status == 2) {
+					System.out.println("Usuário já está online");
+				} else if (status == 0) {
+					System.out.println("Usuário ou senha incorretos");
+				} else {
+					System.out.println("Login efetuado com sucesso");
+				}
 			}
+			// sucesso
+//			if (cadastroOK) {
+//				System.out.println("Cadastro efetuado com sucesso");
+//				// login
+//				if (operacao == 1) {
+//					System.out.println("Login efetuado com sucesso");
+//				} else { // cadastro
+//				}
+//			} else if (!cadastroOK) { // falhou
+				// login
+//				if (operacao == 1) {
+//					System.out.println("Usuário ou senha incorretos");
+//				} else { // cadastro
+//				}
+//			} else { // codigo -1
+//				System.out.println("Usuário já está online");
+//			}
 		}
 		
 	}	
