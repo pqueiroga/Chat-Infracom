@@ -3,6 +3,7 @@ package protocol;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
+import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -37,7 +38,11 @@ public class PSender implements Runnable {
 		DataInputStream receivedData = new DataInputStream(dataIn);
 		
 		while (alive) {
-			datagramSocket.send(encapsulateDatagram(receivedData.));
+			int len = -1;
+			try {len = receivedData.read(buf);} catch (IOException ioe) {}
+			if (len != -1) {
+				try {datagramSocket.send(encapsulateDatagram(buf, len));} catch (IOException ioe) {}
+			}
 		}
 	}
 	
@@ -46,7 +51,7 @@ public class PSender implements Runnable {
 	 * @param data Mensagem(String) a ser encapsulada.
 	 * @return Datagrama pronto para envio.
 	 */
-	public DatagramPacket encapsulateDatagram(byte[] data) {
+	public DatagramPacket encapsulateDatagram(byte[] data, int len) {
 		DatagramPacket datagramPacket = null;
 		
 		return datagramPacket;
