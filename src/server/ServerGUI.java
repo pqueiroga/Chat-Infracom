@@ -5,6 +5,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -18,6 +19,10 @@ import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
 
 import utility.server.ServerAPI;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Janela do servidor
@@ -88,6 +93,33 @@ public class ServerGUI extends JFrame {
 		(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 		(new Thread(new ServidorComeco(listaDeUsuarios))).start();
 		(new Thread(new listTester())).start();
+		
+		/*
+		 *  TODO arrumar esse troço. A ideia é avisar pra todo mundo que o servidor vai ficar fora do ar.
+		 *  Provavelmente vamos precisar abrir uma thread no cliente que fica esperando só por esse sinal
+		 *  e quando receber, avisa pro cliente com um JDialog e fecha a aplicação qdo ele clicar OK!
+		 */
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				synchronized (listaDeUsuarios) {
+					for (int i = 0; i < listaDeUsuarios.size(); i++) {
+						String str = listaDeUsuarios.get(i);
+						try {
+							str = str.substring(str.indexOf('(') + 1, str.lastIndexOf(')'));
+							String tokens[] = str.split(", ");
+							Socket connectionSocket = new Socket(tokens[0], Integer.parseInt(tokens[1]) + 3);
+							OutputStream os = connectionSocket.getOutputStream();
+							os.write(0);
+						} catch (Exception e1) {
+							System.out.println("Provavelmente não deu para avisar pra (" + str + ") que "
+									+ "o servidor vai ficar fora do ar agora.\n" + e1.getClass().getName() + 
+									" " + e1.getMessage());
+						}
+					}
+				}
+			}
+		});
 	}
 }
 

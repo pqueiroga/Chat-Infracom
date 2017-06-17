@@ -184,7 +184,7 @@ public class ServidorCadastroLogin implements Runnable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
+			// nunca deveria dar isto... pls.
 			e.printStackTrace();
 		}
 	}
