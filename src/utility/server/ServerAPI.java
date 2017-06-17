@@ -10,6 +10,7 @@ import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Map;
 
 import utility.buffer.BufferMethods;
@@ -32,9 +33,10 @@ public class ServerAPI {
 	 */
 	public static boolean cadastro(String username, String password) {
 		boolean retorno = false;
+		Socket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			Socket connectionSocket = new Socket("localhost", 2020);
+			connectionSocket = new Socket("localhost", 2020);
 			int codigo = corpoComum(username, password, connectionSocket, 0);
 			if (codigo == 1) {
 				retorno = true; 
@@ -48,6 +50,16 @@ public class ServerAPI {
 		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			if (connectionSocket != null) {
+				if (!connectionSocket.isClosed()) {
+					try {
+						connectionSocket.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
 		}
 		return retorno;
 	}
@@ -119,15 +131,86 @@ public class ServerAPI {
 			e.printStackTrace();
 		} finally {
 			if (connectionSocket != null) {
-				try {
-					connectionSocket.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				if (!connectionSocket.isClosed()) {
+					try {
+						connectionSocket.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		}
 		return new AbstractMap.SimpleEntry<ServerSocket, Integer>(returnSocket, new Integer(status));
+	}
+	
+	public static boolean logout(String username) {
+		boolean retorno = false;
+		Socket connectionSocket = null;
+		try {
+			// se conecta ao servidor de operacoes em contas
+			connectionSocket = new Socket("localhost", 2020);
+			OutputStream outToServer = connectionSocket.getOutputStream();
+			InputStream inFromServer = connectionSocket.getInputStream();
+			
+			// diz que quer logout
+			outToServer.write(2);
+			
+			// envia o nome de usuario
+			BufferMethods.writeString(username, outToServer);
+			
+			if (inFromServer.read() == 1) {
+				retorno = true;
+			}
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			if (connectionSocket != null) {
+				if (!connectionSocket.isClosed()) {
+					try {
+						connectionSocket.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		return retorno;
+	}
+	
+	public static ArrayList<String> pegaOnlines() {
+		ArrayList<String> retorno = new ArrayList<String>();
+		Socket connectionSocket = null;
+		try {
+			connectionSocket = new Socket("localhost", 2020);
+			OutputStream outToServer = connectionSocket.getOutputStream();
+			InputStream inFromServer = connectionSocket.getInputStream();
+			
+			outToServer.write(3);
+			
+			int listSize = inFromServer.read();
+			for (int i = 0; i < listSize; i++) {
+				retorno.add(BufferMethods.readString(inFromServer));
+			}
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (connectionSocket != null) {
+				if (!connectionSocket.isClosed()) {
+					try {
+						connectionSocket.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		return retorno;
 	}
 	
 	/**
@@ -151,10 +234,7 @@ public class ServerAPI {
 		
 		byte[] buffer = new byte[256];
 		
-		// envia o nome de usuario
-		outToServer.write(username.length());
-		BufferMethods.toByteArray(buffer, username);
-		outToServer.write(buffer, 0, username.length());
+		BufferMethods.writeString(username, outToServer);
 		
 		// recebe o salt, que sempre tera 32 chars
 		inFromServer.read(buffer, 0, 32);
@@ -180,10 +260,7 @@ public class ServerAPI {
 		
 		byte[] buffer = new byte[256];
 		
-		// envia o nome de usuario
-		outToServer.write(username.length());
-		BufferMethods.toByteArray(buffer, username);
-		outToServer.write(buffer, 0, username.length());
+		BufferMethods.writeString(username, outToServer);
 		
 		// recebe o salt, que sempre tera 32 chars
 		inFromServer.read(buffer, 0, 32);

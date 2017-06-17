@@ -42,88 +42,128 @@ public class ServidorCadastroLogin implements Runnable {
 			int operacao = inFromClient.read();
 			byte[] buffer = new byte[256];
 			
-			// recebe nome de usuario
-			int strlen = inFromClient.read();
-			inFromClient.read(buffer, 0, strlen);
-			String username = BufferMethods.byteArraytoString(buffer, strlen);
-			
-			String usrSalt = null;
-			synchronized (usuariosCadastrados) {
-				usrSalt = getUsrSalt(usuariosCadastrados, username);
-			}
-			if (usrSalt == null) { // se nao tiver salt, gera. se tiver ai manda o que tem
-				byte[] salt = PasswordSecurity.getSalt().getBytes("ASCII");
-				usrSalt = PasswordSecurity.toHex(salt);
-
-			}
-			BufferMethods.toByteArray(buffer, usrSalt);
-			// usrSalt sempre tera 32 caracteres.
-			outToClient.write(buffer, 0, 32);
-			
-			// recebe senha
-			inFromClient.read(buffer, 0, 128);
-			String usrPw = BufferMethods.byteArraytoString(buffer, 128);
-			
-			if (operacao == 0) { // cadastro
-				synchronized (usuariosCadastrados) {
-					if(cadastroBinario(usuariosCadastrados, username, usrPw, usrSalt)) {
-						// conseguiu cadastrar
-						System.out.println("Cadastro OK de " + username);
-						outToClient.write(1);
-					} else {
-						// nao conseguiu cadastrar
-						System.out.println("Não consegui cadastrar " + username);
-						outToClient.write(0);
+			if (operacao == 3) { // enviar lista de online
+				synchronized (listaDeUsuarios) {
+					outToClient.write(listaDeUsuarios.size());
+					for (int i = 0; i < listaDeUsuarios.size(); i++) {
+						BufferMethods.writeString(listaDeUsuarios.get(i), outToClient);
 					}
 				}
-			} else { // login
-				// atualizar listaDeUsuarios online
-				boolean usrExiste = false;
-				synchronized (usuariosCadastrados) {
-					usrExiste = usrExisteBinario(usuariosCadastrados, username, usrPw);
-				}
-				// checa se username existe, se password bate
-				if (usrExiste) {
-					// checa se usuario ja esta online
+			} else if (operacao == 0 || operacao == 1 || operacao == 2) { // login/cadastro/logout
+				// precisa do nome de usuario
+				// recebe nome de usuario
+				String username = BufferMethods.readString(inFromClient);
+				
+				if (operacao == 2) { // logout
+					/* para deslogar, basta receber o nome do usuário e retirá-lo
+					 * do registro de usuários online. Garantindo que esta operação
+					 * só pode ser chamada por um cliente quando já logado, não é preciso
+					 * se preocupar com autenticação pra evitar que qualquer um deslogue qualquer outro.
+					 * Checar pelo IP deve ser o suficiente hehe.
+					 * Caso contrário, como autenticar sem que o usuário tenha que informar a senha pra logout
+					 * (que não faz sentido nenhum) e sem guardar a senha do usuário localmente também, que
+					 * queremos evitar. Uma solução seria fazer com que o lado cliente possa ter o hash
+					 * e no caso de logout checar pelo menos pelo hash...
+					 */
+					boolean logouOut = false;
 					synchronized (listaDeUsuarios) {
-						if (usuarioListaOnline(listaDeUsuarios, username)) {
-							System.out.println("Usuario já está online");
-							outToClient.write(2);
-						} else {
-							outToClient.write(1);
-							// descobre se o cliente conseguiu um servidor
-							int servOK = inFromClient.read();
-							if (servOK == 1) {
-								
-								// lê o número de porta
-								inFromClient.read(buffer, 0, 5);
-								int port = Integer.parseInt(BufferMethods.byteArraytoString(buffer, 5));
-								
-								/* esta parte foi retirada pois o IP que ele recebe é o 0.0.0.0
-								 * troquei pra que o servidor pegue o IP da outra ponta da conexão
-								 * com connectionSocket mesmo.
-								 */
-								// lê comprimento da string IP
-//								int iplen = inFromClient.read();
-								// lê IP
-//								inFromClient.read(buffer, 0, iplen);
-//								String IP = BufferMethods.byteArraytoString(buffer, iplen);
-								
-								listaDeUsuarios.add( username + " ("
-										+ connectionSocket.getInetAddress().getHostAddress() + ", "
-										+ port + ")");
-								listaDeUsuarios.sort(String::compareToIgnoreCase);
-								listaDeUsuarios.notify();
-							} else {
-								System.out.println("o cara n conseguiu achar porta pro servidor lol");
-							}
+						int pos = usuarioListaOnline(listaDeUsuarios, username, connectionSocket.getInetAddress().getHostAddress());
+						if (pos != -1 ) {
+							listaDeUsuarios.remove(pos);
+							listaDeUsuarios.notify();
+							logouOut = true;
 						}
 					}
-				} else {
-					System.out.println("Usuário ou senha incorretos");
-					outToClient.write(0);
+					if (logouOut) {
+						outToClient.write(1);
+					} else {
+						outToClient.write(0);
+					}
+				} else { // login/cadastro
+					// autenticacao
+					String usrSalt = null;
+					synchronized (usuariosCadastrados) {
+						usrSalt = getUsrSalt(usuariosCadastrados, username);
+					}
+					if (usrSalt == null) { // se nao tiver salt, gera. se tiver ai manda o que tem
+						byte[] salt = PasswordSecurity.getSalt().getBytes("ASCII");
+						usrSalt = PasswordSecurity.toHex(salt);
+					}
+					BufferMethods.toByteArray(buffer, usrSalt);
+					// usrSalt sempre tera 32 caracteres.
+					outToClient.write(buffer, 0, 32);
+					
+					// recebe senha
+					inFromClient.read(buffer, 0, 128);
+					String usrPw = BufferMethods.byteArraytoString(buffer, 128);
+					
+					if (operacao == 0) { // cadastro
+						boolean cadastroOk = false;
+						synchronized (usuariosCadastrados) {
+							cadastroBinario(usuariosCadastrados, username, usrPw, usrSalt);
+						}
+						if(cadastroOk) {
+							// conseguiu cadastrar
+							System.out.println("Cadastro OK de " + username);
+							outToClient.write(1);
+						} else {
+							// nao conseguiu cadastrar
+							System.out.println("Não consegui cadastrar " + username);
+							outToClient.write(0);
+						}
+					} else if (operacao == 1) { // login
+						// atualizar listaDeUsuarios online
+						boolean usrExiste = false;
+						synchronized (usuariosCadastrados) {
+							usrExiste = usrExisteBinario(usuariosCadastrados, username, usrPw);
+						}
+						// checa se username existe, se password bate
+						if (usrExiste) {
+							// checa se usuario ja esta online
+							int usrOn = -1;
+							synchronized (listaDeUsuarios) {
+								usrOn = usuarioListaOnline(listaDeUsuarios, username);
+							}
+							if (usrOn != -1) {
+								System.out.println("Usuario já está online");
+								outToClient.write(2);
+							} else {
+								outToClient.write(1);
+								// descobre se o cliente conseguiu um servidor
+								int servOK = inFromClient.read();
+								if (servOK == 1) {
+									
+									// lê o número de porta
+									inFromClient.read(buffer, 0, 5);
+									int port = Integer.parseInt(BufferMethods.byteArraytoString(buffer, 5));
+									
+									/* esta parte foi retirada pois o IP que ele recebe é o 0.0.0.0
+									 * troquei pra que o servidor pegue o IP da outra ponta da conexão
+									 * com connectionSocket mesmo.
+									 */
+									// lê comprimento da string IP
+//									int iplen = inFromClient.read();
+									// lê IP
+//									inFromClient.read(buffer, 0, iplen);
+//									String IP = BufferMethods.byteArraytoString(buffer, iplen);
+									synchronized (listaDeUsuarios) {
+										listaDeUsuarios.add( username + " ("
+												+ connectionSocket.getInetAddress().getHostAddress() + ", "
+												+ port + ")");
+										listaDeUsuarios.sort(String::compareToIgnoreCase);
+										listaDeUsuarios.notify();
+									}
+								} else {
+									System.out.println("o cara n conseguiu achar porta pro servidor lol");
+								}
+							}
+						} else {
+							System.out.println("Usuário ou senha incorretos");
+							outToClient.write(0);
+						}
+					}
 				}
-			} // TODO logout
+			}
 			connectionSocket.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -135,25 +175,24 @@ public class ServidorCadastroLogin implements Runnable {
 	}
 	
 	/**
-	 * faz busca binaria na lista de usuarios online
+	 * faz busca binaria na lista de usuarios online, checa IP.
 	 * serve para saber se pode fazer login ou se isso seria ilegal.
 	 * @param listaDeUsuarios ArrayList com usuarios online.
 	 * @param usr Nome de usuario.
-	 * @return Verdadeiro se usuario ja esta online.
+	 * @param hostAddress IP.
+	 * @return Posição na lista, -1 se não foi encontrado.
 	 */
-	private boolean usuarioListaOnline(ArrayList<String> listaDeUsuarios, String usr) {
+	private int usuarioListaOnline(ArrayList<String> listaDeUsuarios, String usr, String hostAddress) {
 		int l = 0, r = listaDeUsuarios.size() - 1, m, comp;
 		String str;
-		boolean uniqueUsr = true;
 		if (r >= 0) {
 			do {
 				m = (int) ((l + r) / 2);
 				str = listaDeUsuarios.get(m);
-				comp = (usr + " (").compareToIgnoreCase(str.
-						substring(0, str.indexOf('(') + 1));
+				comp = (usr + " (" + hostAddress + ",").compareToIgnoreCase(str.
+						substring(0, str.indexOf(",") + 1));
 				if (comp == 0) {
-					uniqueUsr = false;
-					break;
+					return m;
 				} else if (comp < 0) {
 					r = m - 1;
 				} else {
@@ -161,7 +200,35 @@ public class ServidorCadastroLogin implements Runnable {
 				}
 			} while (l <= r);
 		}
-		return !uniqueUsr;
+		return -1;
+	}
+
+	/**
+	 * faz busca binaria na lista de usuarios online
+	 * serve para saber se pode fazer login ou se isso seria ilegal.
+	 * @param listaDeUsuarios ArrayList com usuarios online.
+	 * @param usr Nome de usuario.
+	 * @return Posição na lista, -1 se não foi encontrado.
+	 */
+	private int usuarioListaOnline(ArrayList<String> listaDeUsuarios, String usr) {
+		int l = 0, r = listaDeUsuarios.size() - 1, m, comp;
+		String str;
+		if (r >= 0) {
+			do {
+				m = (int) ((l + r) / 2);
+				str = listaDeUsuarios.get(m);
+				comp = (usr + " (").compareToIgnoreCase(str.
+						substring(0, str.indexOf('(') + 1));
+				if (comp == 0) {
+					return m;
+				} else if (comp < 0) {
+					r = m - 1;
+				} else {
+					l = m + 1;
+				}
+			} while (l <= r);
+		}
+		return -1;
 	}
 		
 	/**

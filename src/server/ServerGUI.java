@@ -129,24 +129,16 @@ class listTester implements Runnable {
 				} else {
 					System.out.println("Login efetuado com sucesso");
 				}
+			} else if (operacao == 2) { // logout NÃO PRECISA DA SENHA, MAS DEIXEI ASSIM PARA FICAR COM MESMA ESTRUTURA
+				boolean logoutOK = ServerAPI.logout(usr);
+				if (logoutOK) {
+					System.out.println("Logout efetuado com sucesso");
+				} else {
+					System.out.println("Deu alguma bronca no logout");
+				}
+			} else if (operacao == 3) { // fetch listaOnline
+				System.out.println(AtualizaLista.prettyListToString(ServerAPI.pegaOnlines()));
 			}
-			// sucesso
-//			if (cadastroOK) {
-//				System.out.println("Cadastro efetuado com sucesso");
-//				// login
-//				if (operacao == 1) {
-//					System.out.println("Login efetuado com sucesso");
-//				} else { // cadastro
-//				}
-//			} else if (!cadastroOK) { // falhou
-				// login
-//				if (operacao == 1) {
-//					System.out.println("Usuário ou senha incorretos");
-//				} else { // cadastro
-//				}
-//			} else { // codigo -1
-//				System.out.println("Usuário já está online");
-//			}
 		}
 		
 	}	
