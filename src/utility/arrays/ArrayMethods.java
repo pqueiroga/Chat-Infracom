@@ -2,7 +2,7 @@ package utility.arrays;
 
 import java.util.Arrays;
 
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
+//import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
 
 public class ArrayMethods {
 	public static byte[] concatenateByteArrays(byte[] a, byte[] b) {
