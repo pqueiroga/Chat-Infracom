@@ -42,7 +42,9 @@ public class ServidorCadastroLogin implements Runnable {
 			int operacao = inFromClient.read();
 			byte[] buffer = new byte[256];
 			
-			if (operacao == 3) { // enviar lista de online
+			if (operacao == 4) {
+				
+			} else if (operacao == 3) { // enviar lista de online
 				synchronized (listaDeUsuarios) {
 					outToClient.write(listaDeUsuarios.size());
 					for (int i = 0; i < listaDeUsuarios.size(); i++) {

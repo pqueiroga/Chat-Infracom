@@ -98,7 +98,7 @@ public class ServerGUI extends JFrame {
 		 *  TODO arrumar esse troço. A ideia é avisar pra todo mundo que o servidor vai ficar fora do ar.
 		 *  Provavelmente vamos precisar abrir uma thread no cliente que fica esperando só por esse sinal
 		 *  e quando receber, avisa pro cliente com um JDialog e fecha a aplicação qdo ele clicar OK!
-		 */
+		 *
 		addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
@@ -119,7 +119,7 @@ public class ServerGUI extends JFrame {
 					}
 				}
 			}
-		});
+		});*/
 	}
 }
 
