@@ -11,16 +11,13 @@ import java.io.IOException;
  * @author Gabriel Barbosa
  * */
 
-public class PReceiver implements Runnable {
+public class PReceiver {
 	/*	time de timeout
 	 * 	DatagramSocket para receber datagramas
 	 * 	PipedOutputStream para enviar dados à aplicação */
 	private DatagramSocket datagramSocket;
 	private DatagramPacket datagramPacket;
 	private PipedOutputStream dataOut;
-	
-	//boolean determinará se thread deve continuar rodando
-	public boolean alive;
 	
 	/**
 	 * Cria parte receptora de datagramas de uma Socket.
@@ -29,7 +26,6 @@ public class PReceiver implements Runnable {
 	 * @param datagramPacket DatagramPacket com buffer para receber datagramas.
 	 */
 	public PReceiver(PipedInputStream dataReader, DatagramSocket datagramSocket, DatagramPacket datagramPacket) {
-		alive = true;
 		dataOut = null;
 		this.datagramPacket = datagramPacket;
 		this.datagramSocket = datagramSocket;
@@ -37,24 +33,6 @@ public class PReceiver implements Runnable {
 			dataOut = new PipedOutputStream(dataReader);
 		} catch (IOException ioe) {}
 
-	}
-	
-	public void run() {
-		try {
-			datagramSocket.receive(datagramPacket);
-		} catch (IOException ioe) {}
-		
-		switch (judgeDatagram(datagramPacket)) {
-			// 0 - Datagrama OK, entregar mensagem à aplicação
-			case (0):
-				try {
-					dataOut.write(decapsulateDatagram(datagramPacket));
-				} catch (IOException ioe) {}
-			break;
-
-			default:
-			break;
-		}
 	}
 	
 	/**
