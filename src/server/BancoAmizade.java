@@ -273,6 +273,8 @@ public class BancoAmizade {
 			System.out.println("amigos de pedro: " + teste.listarAmigos("pedro"));
 			System.out.println("amigos de pocahontas: " + teste.listarAmigos("pocahontas"));
 			System.out.println("amigos de daniel: " + teste.listarAmigos("daniel"));
+			
+			System.out.println("informação de usuário inexistente poseidon: " + teste.getInfo("poseidon"));
 
 //			Scanner in = new Scanner(System.in);
 //			in.nextLine();
