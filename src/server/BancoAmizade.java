@@ -51,7 +51,7 @@ public class BancoAmizade {
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}	
-		retorno.sort(String::compareToIgnoreCase);;
+		retorno.sort(String::compareToIgnoreCase);
 		return retorno;
 	}
 	
@@ -92,6 +92,7 @@ public class BancoAmizade {
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
+		retorno.sort(String::compareToIgnoreCase);
 		return retorno;
 	}
 	
