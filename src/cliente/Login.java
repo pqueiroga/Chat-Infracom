@@ -90,8 +90,8 @@ public class Login extends JFrame {
 				Map.Entry<ServerSocket, Integer> mp=toServer.login(textField.getText(), new String(passwordField.getPassword()));
 				int status=mp.getValue().intValue();
 				if(status==1){
-					//ajeitar passar direto o socket dps
-					Profile p=new Profile(mp.getKey().getLocalPort());
+					//lembrar de mudar p o nosso protocolo
+					Profile p=new Profile(mp.getKey());
 					p.setVisible(true);
 				}else{
 					if(status==0){
@@ -112,7 +112,7 @@ public class Login extends JFrame {
 				if(b){
 					warning_window.setText("Cadastro Realizado com Sucesso!!!");
 				}else{
-					warning_window.setText("Usu·rio j· Cadastrado!");
+					warning_window.setText("Usu√°rio j√° Cadastrado!");
 				}
 				warning_window.setVisible(true);
 			}
