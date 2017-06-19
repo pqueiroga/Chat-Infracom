@@ -4,10 +4,11 @@ import protocol.*;
 import java.io.*;
 import javax.swing.*;
 public class RecieveMessages implements Runnable {
-	private int port;
+	//lembrar de mudar para nosso protocolo
+	private ServerSocket rcv_skt;
 	private JTextPane textPane;
-	public RecieveMessages(int port, JTextPane textPane) {
-		this.port=port;
+	public RecieveMessages(ServerSocket rcv_skt, JTextPane textPane) {
+		this.rcv_skt=rcv_skt;
 		this.textPane=textPane;
 	}
 	public void run() {
@@ -20,7 +21,6 @@ public class RecieveMessages implements Runnable {
 				PReceiver rcv=new PReceiver(dataReader, rcvskt, rcvpkt);
 				rcv.run();
 				textPane.setText(textPane.getText()+dataReader.available()+'\n');*/
-				ServerSocket rcv_skt=new ServerSocket(port);
 				Socket socket=rcv_skt.accept();
 				InputStreamReader in = new InputStreamReader(socket.getInputStream());
 				BufferedReader buff=new BufferedReader(in);
@@ -32,5 +32,4 @@ public class RecieveMessages implements Runnable {
 			}
 		}
 	}
-
 }
