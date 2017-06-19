@@ -86,6 +86,7 @@ public class ServidorConta implements Runnable {
 					outToClient.write(1);
 					String username = BufferMethods.readString(inFromClient);
 					ArrayList<String> solpen = banco.pedidosPendentes(username);
+					banco.desconectar();
 					outToClient.write(solpen.size());
 					for (String str : solpen) {
 						BufferMethods.writeString(str, outToClient);
