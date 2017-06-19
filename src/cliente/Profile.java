@@ -30,7 +30,8 @@ public class Profile extends JFrame {
 	/**
 	 * Create the frame.
 	 */
-	public Profile(int rcv_port) {
+	//lembrar de mudar para nosso protocolo
+	public Profile(ServerSocket rcv_port) {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 450, 300);
 		contentPane = new JPanel();
