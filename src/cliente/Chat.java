@@ -28,7 +28,7 @@ public class Chat extends JFrame {
 	/**
 	 * Create the frame.
 	 */
-	public Chat(String DestinationIP, int DestinationPort, int LocalPort) {
+	public Chat(String DestinationIP, int DestinationPort, ServerSocket rcv_skt) {//lembrar de mudar p nosso protocolo
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 450, 300);
 		contentPane = new JPanel();
@@ -50,7 +50,8 @@ public class Chat extends JFrame {
 		//Thread para envio de mensagens
 		Thread send= new Thread(new SendText(DestinationIP, DestinationPort));
 		//Thread para receber mensagens
-		Thread msgrcv=new Thread(new RecieveMessages(LocalPort, textPane));
+		//lebrar de mudar para nosso protocolo
+		Thread msgrcv=new Thread(new RecieveMessages(rcv_skt, textPane));
 		//Thread para enviar arquivos
 		
 		//Thread para receber arquivos
