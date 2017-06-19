@@ -26,7 +26,6 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.OutputStream;
 import javax.swing.JButton;
-import javax.swing.JTextArea;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import java.awt.event.FocusAdapter;
