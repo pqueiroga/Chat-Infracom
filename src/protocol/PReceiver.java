@@ -17,7 +17,9 @@ public class PReceiver {
 	 * 	PipedOutputStream para enviar dados à aplicação */
 	private DatagramSocket datagramSocket;
 	private DatagramPacket datagramPacket;
+	private PSender senderSide;
 	private PipedOutputStream dataOut;
+	private int lastReceived;
 	
 	/**
 	 * Cria parte receptora de datagramas de uma Socket.
@@ -26,13 +28,26 @@ public class PReceiver {
 	 * @param datagramPacket DatagramPacket com buffer para receber datagramas.
 	 */
 	public PReceiver(PipedInputStream dataReader, DatagramSocket datagramSocket, DatagramPacket datagramPacket) {
+		lastReceived = -1;
 		dataOut = null;
 		this.datagramPacket = datagramPacket;
 		this.datagramSocket = datagramSocket;
 		try {
 			dataOut = new PipedOutputStream(dataReader);
 		} catch (IOException ioe) {}
-
+	}
+	
+	/**
+	 * PReceiver deve possuir referência a lado enviador, setSender configura essa referência para
+	 * o PSender especificado.
+	 * @param sender Referência a PSender.
+	 */
+	public void setSender(PSender sender) {
+		senderSide = sender;
+	}
+	
+	public int getLastReceived() {
+		return lastReceived;
 	}
 	
 	/**

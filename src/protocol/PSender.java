@@ -1,5 +1,6 @@
 package protocol;
 
+import utility.Strings.StringMethods;
 import utility.arrays.ArrayMethods;
 import java.util.Vector;
 import java.net.DatagramSocket;
@@ -15,10 +16,10 @@ import java.io.PipedOutputStream;
  * @author Gabriel Barbosa
  *
  */
-public class PSender implements Runnable {
+public class PSender {
 	private DatagramSocket datagramSocket;
 	private DatagramPacket datagramPacket;
-	private Vector<DatagramPacket> packetBuffer;
+	private PReceiver receiverSide;
 	private PipedInputStream dataIn;
 	private DataInputStream dis;
 	private int windowSize, lastAcked;
@@ -31,30 +32,31 @@ public class PSender implements Runnable {
 	 */
 	public PSender(DatagramSocket datagramSocket, int bufferSize) {
 		this.datagramSocket = datagramSocket;
-		packetBuffer = new Vector<DatagramPacket>();
 		dis = new DataInputStream(dataIn);
 		buf = new byte[bufferSize];
 		windowSize = 1;
 		lastAcked = -1;
 	}
-	
-	public void run() {
-		int len;
-		while (true) {
-			len = -1;
-			try {len = dis.read(buf);} catch (IOException ioe) {}
-			if (len != -1) {
-				packetBuffer.addElement(encapsulateDatagram(buf, len));
-			}
-		}
+
+	/**
+	 * A classe PSender precisa de uma referência à sua parte receptora correspondente,
+	 * o método setReceiver configura essa referência para o PReceiver especificado.
+	 * @param receiver PReceiver a ser referenciado.
+	 */
+		public void setReceiver(PReceiver receiver) {
+		receiverSide = receiver;
 	}
-	
+
 	/**
 	 * Recebe mensagem e transforma em segmento.
 	 * @param data Mensagem(String) a ser encapsulada.
 	 * @return Datagrama pronto para envio.
 	 */
 	private DatagramPacket encapsulateDatagram(byte[] data, int len) {
+		byte array[] = new byte[len];
+		int lenRead = 0;
+		try {if (dis.available() > 0) lenRead = dis.read(array, 0, len);} catch (IOException ioe) {}
+		
 		return new DatagramPacket(data, len);
 	}
 	
@@ -62,9 +64,7 @@ public class PSender implements Runnable {
 	 * Envia segmentos ao destinatário. 
 	 */
 	public void sendData() {
-		for (int i = 0; i < windowSize;i++) {
-			try {datagramSocket.send(packetBuffer.elementAt(lastAcked + i + 1));} catch (IOException ioe) {}
-		}
+
 	}
 	
 	/**
@@ -72,9 +72,6 @@ public class PSender implements Runnable {
 	 * @param ackedNum Número do último segmento recebido pelo destinatário.
 	 */
 	public void updatePacketBuffer(int ackedNum) {
-		for (int i = 0;i < ackedNum - lastAcked;i++) {
-			packetBuffer.remove(0);
-		}
 		lastAcked = ackedNum;
 	}
 
