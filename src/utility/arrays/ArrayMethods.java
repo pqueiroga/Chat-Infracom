@@ -33,9 +33,8 @@ public class ArrayMethods {
 	 */
 	public static byte[] byteArraySubset(byte[] array, int len, int offset) {
 		byte[] newArray = new byte[len];
-		for (int i = offset;i < offset + len;i++) {
-			newArray[i - offset] = array[i];
-		}
+		
+		System.arraycopy(array, offset, newArray, 0, len);
 		
 		return newArray;
 	}

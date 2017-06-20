@@ -57,6 +57,8 @@ public class PSender {
 		int lenRead = 0;
 		try {if (dis.available() > 0) lenRead = dis.read(array, 0, len);} catch (IOException ioe) {}
 		
+		int seqnum = receiverSide.getLastReceived();
+		
 		return new DatagramPacket(data, len);
 	}
 	
