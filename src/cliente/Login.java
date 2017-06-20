@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.Color;
+
 public class Login extends JFrame {
 	private ServerAPI toServer;
 	private JPanel contentPane;
@@ -216,10 +217,12 @@ public class Login extends JFrame {
 							lblUsrInfo.setText("Nome de usuário ou senha inválidos: " + usrTextField.getText());
 						}
 					} catch (IOException e1) {
-						// TODO Auto-generated catch block
+						lblUsrInfo.setForeground(Color.RED);
+						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
 						e1.printStackTrace();
 					} catch (GeneralSecurityException e1) {
-						// TODO Auto-generated catch block
+						lblUsrInfo.setForeground(Color.RED);
+						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
 						e1.printStackTrace();
 					}
 				} else {
