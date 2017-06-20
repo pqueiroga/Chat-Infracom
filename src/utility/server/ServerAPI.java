@@ -164,7 +164,7 @@ public class ServerAPI {
 							temp5 = new ServerSocket(portaDaSessao);
 							returnSocket.add(temp5); // solicitação de amizade
 							portaDaSessao++;
-							temp6 = new ServerSocket(2030);
+							temp6 = new ServerSocket(portaDaSessao);
 							returnSocket.add(temp6); // ping
 						} catch (IOException e) {
 							returnSocket.clear();
