@@ -340,20 +340,24 @@ public class ServidorConta implements Runnable {
 					
 					boolean cadastroOk;
 					if (username.length() > 20 || usrSalt.length() > 32 || usrPw.length() > 128) {
-						cadastroOk = false;
+						outToClient.write(3);
 					} else {
-						cadastroOk = banco.cadastrarUsuario(username, usrSalt, usrPw);
+						try {
+							cadastroOk = banco.cadastrarUsuario(username, usrSalt, usrPw);
+							if (cadastroOk) {
+								// conseguiu cadastrar
+								System.out.println("Cadastro OK de " + username);
+								outToClient.write(1);
+							} else {
+								// nao conseguiu cadastrar
+								System.out.println("Não consegui cadastrar " + username);
+								outToClient.write(0);
+							}
+						} catch (MySQLIntegrityConstraintViolationException e) {
+							outToClient.write(2);
+						}
 					}
 					banco.desconectar();
-					if(cadastroOk) {
-						// conseguiu cadastrar
-						System.out.println("Cadastro OK de " + username);
-						outToClient.write(1);
-					} else {
-						// nao conseguiu cadastrar
-						System.out.println("Não consegui cadastrar " + username);
-						outToClient.write(0);
-					}
 				} else {
 					outToClient.write(0); // não conseguiu se conectar ao BD.
 				}

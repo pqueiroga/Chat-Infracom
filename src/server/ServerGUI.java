@@ -129,7 +129,7 @@ public class ServerGUI extends JFrame {
 					(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 					(new Thread(new ServidorComeco(listaDeUsuarios, port))).start();
 					setTitle("Funcionando na porta " + port);
-					(new Thread(new listTester())).start();
+//					(new Thread(new listTester())).start();
 					btnIniciar.setEnabled(false);
 					txtPorta.setEnabled(false);
 				} catch (NumberFormatException e) {
@@ -148,7 +148,7 @@ public class ServerGUI extends JFrame {
 						(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 						(new Thread(new ServidorComeco(listaDeUsuarios, port))).start();
 						setTitle("Funcionando na porta " + port);
-						(new Thread(new listTester())).start();
+//						(new Thread(new listTester())).start();
 						btnIniciar.setEnabled(false);
 						txtPorta.setEnabled(false);
 					} catch (NumberFormatException e) {
@@ -214,7 +214,7 @@ public class ServerGUI extends JFrame {
  * thread que simula um cliente, para testes apenas.
  * @author Pedro Queiroga <psq@cin.ufpe.br>
  *
- */
+ *//*
 class listTester implements Runnable {
 
 	@Override
@@ -428,7 +428,7 @@ class listTester implements Runnable {
 		
 	}	
 }
-
+*/
 /**
  * Thread que atualiza a lista de usuarios online na janela do servidor
  * sempre que um usuario entra ou sai.

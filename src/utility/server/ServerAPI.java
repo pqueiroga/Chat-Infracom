@@ -36,13 +36,15 @@ public class ServerAPI {
 	 * Método que cliente usa para solicitar cadastro ao servidor
 	 * @param username Nome de usuário validado
 	 * @param password Senha validada
-	 * @return -2 = alguma exception nesse método. -1 = usuario ja online
-	 * 0 = falha comum (login invlido, senha, usrname indisponivel)
+	 * @return -1 = erro BD
+	 * 0 = falha sem muita razao clara
 	 * 1 = sucesso
+	 * 2 = username indisponivel
+	 * 3 = usrname invalido, senha invalida, nunca deveria dar se o cliente validar
 	 * @throws IOException 
 	 * @throws GeneralSecurityException 
 	 */
-	public boolean cadastro(String username, String password) throws IOException, GeneralSecurityException {
+	public int cadastro(String username, String password) throws IOException, GeneralSecurityException {
 		Socket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
@@ -72,13 +74,9 @@ public class ServerAPI {
 				// recebe do servidor status do cadastro (sucesso ou falha)
 				int codigo = inFromServer.read();
 				connectionSocket.close();
-				if (codigo == 1) {
-					return true; 
-				} else {
-					return false;
-				}
+				return codigo;
 			} else {
-				return false;
+				return -1;
 			}
 		} catch (IOException e) {
 			throw e;
