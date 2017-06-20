@@ -13,11 +13,11 @@ import java.util.ArrayList;
  */
 public class ServidorComeco implements Runnable {
 	ArrayList<String> listaDeUsuarios;
-	int port;
+	ServerSocket servidor;
 	
-	public ServidorComeco(ArrayList<String> listaDeUsuarios, int port) {
+	public ServidorComeco(ArrayList<String> listaDeUsuarios, ServerSocket wSocket) {
 		this.listaDeUsuarios = listaDeUsuarios;
-		this.port = port;
+		this.servidor = wSocket;
 	}
 	
 	public void run() {
@@ -28,7 +28,6 @@ public class ServidorComeco implements Runnable {
 //				fw.write(0 + "\n");
 //				fw.close();
 //			}
-			ServerSocket servidor = new ServerSocket(this.port);
 			while (true) {
 				Socket connectionSocket = servidor.accept();
 				(new Thread(new ServidorConta(

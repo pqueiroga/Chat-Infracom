@@ -163,7 +163,7 @@ public class Login extends JFrame {
 						Map.Entry<ArrayList<ServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 						int status = mp.getValue().intValue();
 						if (status == 1) {
-		//					// TODO lembrar de mudar p o nosso protocolo
+							// TODO lembrar de mudar p o nosso protocolo
 							// TODO fazer Profile aceitar os 6 ServerSockets
 							Profile p = new Profile(null);
 							p.setVisible(true);
@@ -176,8 +176,16 @@ public class Login extends JFrame {
 						} else if (status == 0) {
 							lblUsrInfo.setForeground(Color.RED);
 							lblUsrInfo.setText("Usuário ou senha incorretos");
+						} else if (status == -1) {
+							lblUsrInfo.setForeground(Color.RED);
+							lblUsrInfo.setText("Não conseguimos portas livres");
 						}
-					} catch (Exception e1) {
+					} catch (ConnectException e1) {
+						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
+							lblUsrInfo.setForeground(Color.RED);
+							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
+						}
+					}catch (Exception e1) {
 						lblUsrInfo.setForeground(Color.RED);
 						lblUsrInfo.setText("Erro tosco durante o login");
 						e1.printStackTrace();
@@ -198,7 +206,6 @@ public class Login extends JFrame {
 				passwordField.setEnabled(false);
 				btnCadastro.setEnabled(false);
 				btnLogin.setEnabled(false);
-				System.out.println(usrTextField.getText());
 				String usrOk = validaUsr(usrTextField.getText());
 				String pwOk = validaPw(new String(passwordField.getPassword()));
 				if (usrOk.isEmpty() && pwOk.isEmpty()) {
@@ -216,6 +223,11 @@ public class Login extends JFrame {
 						} else if (b == 3) {
 							lblUsrInfo.setForeground(Color.RED);
 							lblUsrInfo.setText("Nome de usuário ou senha inválidos: " + usrTextField.getText());
+						}
+					} catch (ConnectException e1) {
+						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
+							lblUsrInfo.setForeground(Color.RED);
+							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
 						}
 					} catch (IOException e1) {
 						lblUsrInfo.setForeground(Color.RED);

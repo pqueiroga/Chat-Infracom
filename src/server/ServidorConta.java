@@ -49,24 +49,28 @@ public class ServidorConta implements Runnable {
 					banco.desconectar();
 					synchronized (listaDeUsuarios) {
 						int j = 0;
-						// válido pois as duas estão ordenadas alfabeticamente com o mesmo comparador
-						// o compareToIgnoreCase
-						for (int i = 0; i < listaDeUsuarios.size(); i++) {
-							if (j >= fl.size()) {
-								break;
-							}
-							String temp = listaDeUsuarios.get(i);
-							if (temp.indexOf(' ') != -1) {
-								if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
-									flOnlineOffline.add(temp);
-									j++;
+						boolean jOk;
+						while (j < fl.size()) {
+							jOk = false;
+							for (int i = 0; i < listaDeUsuarios.size(); i++) {
+								String temp = listaDeUsuarios.get(i);
+								if (temp.indexOf(' ') != -1) {
+									if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
+										flOnlineOffline.add(temp);
+										jOk = true;
+										break;
+									}
 								}
 							}
-						}
-						while (j < fl.size()) {
-							flOnlineOffline.add(fl.get(j)); // adiciona os offlines à lista tb
+							if (!jOk) {
+								flOnlineOffline.add(fl.get(j));
+							}
 							j++;
 						}
+//						while (j < fl.size()) {
+//							flOnlineOffline.add(fl.get(j)); // adiciona os offlines à lista tb
+//							j++;
+//						}
 					}
 					outToClient.write(flOnlineOffline.size());
 					for (String str : flOnlineOffline) {
@@ -103,19 +107,23 @@ public class ServidorConta implements Runnable {
 					banco.desconectar();
 					synchronized (listaDeUsuarios) {
 						int j = 0;
-						// válido pois as duas estão ordenadas alfabeticamente com o mesmo comparador
-						// o compareToIgnoreCase
-						for (int i = 0; i < listaDeUsuarios.size(); i++) {
-							if (j >= fl.size()) {
-								break;
-							}
-							String temp = listaDeUsuarios.get(i);
-							if (temp.indexOf(' ') != -1) {
-								if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
-									flOnline.add(temp);
-									j++;
+						boolean jOk;
+						while (j < fl.size()) {
+							jOk = false;
+							for (int i = 0; i < listaDeUsuarios.size(); i++) {
+								if (j >= fl.size()) {
+									break;
+								}
+								String temp = listaDeUsuarios.get(i);
+								if (temp.indexOf(' ') != -1) {
+									if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
+										flOnline.add(temp);
+										jOk = true;
+										break;
+									}
 								}
 							}
+							j++;
 						}
 					}
 					outToClient.write(flOnline.size());

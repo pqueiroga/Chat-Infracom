@@ -100,7 +100,11 @@ public class ServerAPI {
 	 * @param username Nome de usuario
 	 * @param password Senha
 	 * @return dois valores, um ServerSocket e um inteiro. O inteiro é um código de status (sucesso ou pq falhou).
-	 * Se falhou, retorna uma ServerSocket nula.
+	 * Se falhou, retorna uma ServerSocket nula.<br>
+	 * -1 quer dizer que cliente não conseguiu portas<br>
+	 * 0 quer dizer usuário ou senha incorretos<br>
+	 * 1 quer dizer OK<br>
+	 * 2 quer dizer usuário já está online
 	 * @throws GeneralSecurityException 
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -195,6 +199,7 @@ public class ServerAPI {
 						// envia número de porta
 						outToServer.write(buffer, 0, 5);
 					} else {
+						status = -1;
 						outToServer.write(0);
 					}
 				}

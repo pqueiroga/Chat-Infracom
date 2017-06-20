@@ -4,6 +4,7 @@ import java.awt.EventQueue;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
@@ -126,14 +127,19 @@ public class ServerGUI extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				try {
 					int port = Integer.parseInt(txtPorta.getText());
+					ServerSocket wSocket = new ServerSocket(port);
 					(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
-					(new Thread(new ServidorComeco(listaDeUsuarios, port))).start();
+					(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
 					setTitle("Funcionando na porta " + port);
 //					(new Thread(new listTester())).start();
 					btnIniciar.setEnabled(false);
 					txtPorta.setEnabled(false);
 				} catch (NumberFormatException e) {
 					txtPorta.setText("Porta");
+				} catch (BindException e) {
+					txtPorta.setText("Porta");
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
 		});
@@ -145,14 +151,19 @@ public class ServerGUI extends JFrame {
 				if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
 					try {
 						int port = Integer.parseInt(txtPorta.getText());
+						ServerSocket wSocket = new ServerSocket(port);
 						(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
-						(new Thread(new ServidorComeco(listaDeUsuarios, port))).start();
+						(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
 						setTitle("Funcionando na porta " + port);
 //						(new Thread(new listTester())).start();
 						btnIniciar.setEnabled(false);
 						txtPorta.setEnabled(false);
 					} catch (NumberFormatException e) {
 						txtPorta.setText("Porta");
+					} catch (BindException e) {
+						txtPorta.setText("Porta");
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
 				}
 			}
@@ -238,7 +249,7 @@ class listTester implements Runnable {
 			operacao = Integer.parseInt(in.nextLine());
 			switch (operacao) {
 			case 0: // cadastro
-				boolean cadastroOK = false;
+				int cadastroOK = -2;
 				System.out.println("Insira usr");
 				usr = in.nextLine();
 				System.out.println("Insira pw");
@@ -249,7 +260,7 @@ class listTester implements Runnable {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				if (cadastroOK) {
+				if (cadastroOK == 1) {
 					System.out.println("Cadastro efetuado com sucesso");
 				} else {
 					System.out.println("Nome de usuário indisponível " + usr);
@@ -427,8 +438,8 @@ class listTester implements Runnable {
 		}
 		
 	}	
-}
-*/
+}*/
+
 /**
  * Thread que atualiza a lista de usuarios online na janela do servidor
  * sempre que um usuario entra ou sai.
