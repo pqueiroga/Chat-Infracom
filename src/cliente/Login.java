@@ -33,12 +33,15 @@ import java.io.IOException;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.Color;
+import javax.swing.JFormattedTextField;
 
 public class Login extends JFrame {
 	private ServerAPI toServer;
 	private JPanel contentPane;
 	private JTextField usrTextField;
 	private JPasswordField passwordField;
+	private JTextField txtIp;
+	private JTextField txtPort;
 
 	/**
 	 * Launch the application.
@@ -60,7 +63,6 @@ public class Login extends JFrame {
 	 * Create the frame.
 	 */
 	public Login() {
-		toServer = new ServerAPI("localhost", 2020);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 376, 289);
 		contentPane = new JPanel();
@@ -68,9 +70,9 @@ public class Login extends JFrame {
 		setContentPane(contentPane);
 		GridBagLayout gbl_contentPane = new GridBagLayout();
 		gbl_contentPane.columnWidths = new int[]{5, 80, 80, 80, 80, 5};
-		gbl_contentPane.rowHeights = new int[]{31, 17, 0, 23, 0, 0, 47, 0, 0};
-		gbl_contentPane.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
+		gbl_contentPane.rowHeights = new int[]{31, 17, 0, 23, 0, 0, 23, 0, 0, 23, 0, 0};
+		gbl_contentPane.columnWeights = new double[]{0.0, 1.0, 0.0, 1.0, 1.0, 0.0};
+		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		contentPane.setLayout(gbl_contentPane);
 		
 		JLabel lblUsername = new JLabel("Usuário");
@@ -135,13 +137,71 @@ public class Login extends JFrame {
 		gbc_lblPwInfo.gridy = 6;
 		contentPane.add(lblPwInfo, gbc_lblPwInfo);
 		
+		JLabel lblServ = new JLabel("IP");
+		GridBagConstraints gbc_lblServ = new GridBagConstraints();
+		gbc_lblServ.anchor = GridBagConstraints.WEST;
+		gbc_lblServ.gridwidth = 2;
+		gbc_lblServ.insets = new Insets(0, 0, 5, 5);
+		gbc_lblServ.gridx = 1;
+		gbc_lblServ.gridy = 7;
+		contentPane.add(lblServ, gbc_lblServ);
+		
+		JLabel lblPorta = new JLabel("Porta");
+		GridBagConstraints gbc_lblPorta = new GridBagConstraints();
+		gbc_lblPorta.anchor = GridBagConstraints.WEST;
+		gbc_lblPorta.insets = new Insets(0, 0, 5, 5);
+		gbc_lblPorta.gridx = 4;
+		gbc_lblPorta.gridy = 7;
+		contentPane.add(lblPorta, gbc_lblPorta);
+		
+		txtIp = new JTextField();
+		GridBagConstraints gbc_txtIp = new GridBagConstraints();
+		gbc_txtIp.gridwidth = 2;
+		gbc_txtIp.insets = new Insets(0, 0, 5, 5);
+		gbc_txtIp.fill = GridBagConstraints.HORIZONTAL;
+		gbc_txtIp.gridx = 1;
+		gbc_txtIp.gridy = 8;
+		contentPane.add(txtIp, gbc_txtIp);
+		txtIp.setColumns(10);
+		
+		txtPort = new JTextField();
+		GridBagConstraints gbc_txtPort = new GridBagConstraints();
+		gbc_txtPort.insets = new Insets(0, 0, 5, 5);
+		gbc_txtPort.fill = GridBagConstraints.HORIZONTAL;
+		gbc_txtPort.gridx = 4;
+		gbc_txtPort.gridy = 8;
+		contentPane.add(txtPort, gbc_txtPort);
+		txtPort.setColumns(10);
+		
+		JLabel lblIpinfo = new JLabel("");
+		lblIpinfo.setForeground(Color.RED);
+		lblIpinfo.setFont(new Font("Dialog", Font.BOLD, 10));
+		GridBagConstraints gbc_lblIpinfo = new GridBagConstraints();
+		gbc_lblIpinfo.anchor = GridBagConstraints.NORTHEAST;
+		gbc_lblIpinfo.gridwidth = 2;
+		gbc_lblIpinfo.insets = new Insets(0, 0, 5, 5);
+		gbc_lblIpinfo.gridx = 1;
+		gbc_lblIpinfo.gridy = 9;
+		contentPane.add(lblIpinfo, gbc_lblIpinfo);
+		
+		JLabel lblPortinfo = new JLabel("");
+		lblPortinfo.setForeground(Color.RED);
+		lblPortinfo.setFont(new Font("Dialog", Font.BOLD, 10));
+		GridBagConstraints gbc_lblPortinfo = new GridBagConstraints();
+		gbc_lblPortinfo.gridwidth = 2;
+		gbc_lblPortinfo.anchor = GridBagConstraints.NORTHEAST;
+		gbc_lblPortinfo.insets = new Insets(0, 0, 5, 5);
+		gbc_lblPortinfo.gridx = 3;
+		gbc_lblPortinfo.gridy = 9;
+		contentPane.add(lblPortinfo, gbc_lblPortinfo);
+		
 		JButton btnCadastro = new JButton("Cadastrar");
 		GridBagConstraints gbc_btnCadastro = new GridBagConstraints();
 		gbc_btnCadastro.gridwidth = 2;
 		gbc_btnCadastro.fill = GridBagConstraints.BOTH;
 		gbc_btnCadastro.insets = new Insets(0, 0, 0, 5);
 		gbc_btnCadastro.gridx = 1;
-		gbc_btnCadastro.gridy = 7;
+		gbc_btnCadastro.gridy = 10;
 		contentPane.add(btnCadastro, gbc_btnCadastro);
 		
 		JButton btnLogin = new JButton("Entrar");
@@ -150,7 +210,7 @@ public class Login extends JFrame {
 		gbc_btnLogin.gridwidth = 2;
 		gbc_btnLogin.fill = GridBagConstraints.BOTH;
 		gbc_btnLogin.gridx = 3;
-		gbc_btnLogin.gridy = 7;
+		gbc_btnLogin.gridy = 10;
 		contentPane.add(btnLogin, gbc_btnLogin);
 		btnLogin.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -158,14 +218,17 @@ public class Login extends JFrame {
 				passwordField.setEnabled(false);
 				String usrOk = validaUsr(usrTextField.getText());
 				String pwOk = validaPw(new String(passwordField.getPassword()));
-				if (usrOk.isEmpty() && pwOk.isEmpty()) {
+				String ipOk = validaIp(txtIp.getText());
+				String portOk = validaPort(txtPort.getText());
+				if (usrOk.isEmpty() && pwOk.isEmpty() && ipOk.isEmpty() && portOk.isEmpty()) {
 					try {
+						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
 						Map.Entry<ArrayList<ServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 						int status = mp.getValue().intValue();
 						if (status == 1) {
 							// TODO lembrar de mudar p o nosso protocolo
 							// TODO fazer Profile aceitar os 6 ServerSockets
-							Profile p = new Profile(null);
+							Profile p = new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
 							p.setVisible(true);
 							setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
 							lblUsrInfo.setForeground(Color.GREEN);
@@ -193,8 +256,9 @@ public class Login extends JFrame {
 				} else {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText(usrOk);
-					lblPwInfo.setForeground(Color.RED);
 					lblPwInfo.setText(pwOk);
+					lblPortinfo.setText(portOk);
+					lblIpinfo.setText(ipOk);
 				}
 				usrTextField.setEnabled(true);
 				passwordField.setEnabled(true);
@@ -208,8 +272,11 @@ public class Login extends JFrame {
 				btnLogin.setEnabled(false);
 				String usrOk = validaUsr(usrTextField.getText());
 				String pwOk = validaPw(new String(passwordField.getPassword()));
-				if (usrOk.isEmpty() && pwOk.isEmpty()) {
+				String ipOk = validaIp(txtIp.getText());
+				String portOk = validaPort(txtPort.getText());
+				if (usrOk.isEmpty() && pwOk.isEmpty() && ipOk.isEmpty() && portOk.isEmpty()) {
 					try {
+						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
 						int b = toServer.cadastro(usrTextField.getText(), new String(passwordField.getPassword()));
 						if (b == 1) {
 							lblUsrInfo.setForeground(Color.GREEN);
@@ -241,8 +308,9 @@ public class Login extends JFrame {
 				} else {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText(usrOk);
-					lblPwInfo.setForeground(Color.RED);
 					lblPwInfo.setText(pwOk);
+					lblPortinfo.setText(portOk);
+					lblIpinfo.setText(ipOk);
 				}
 				usrTextField.setEnabled(true);
 				passwordField.setEnabled(true);
@@ -262,9 +330,25 @@ public class Login extends JFrame {
 		passwordField.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyReleased(KeyEvent arg0) {
-				lblUsrInfo.setForeground(Color.RED);
 				String checa = new String(passwordField.getPassword());
 				lblPwInfo.setText(validaPw(checa));
+			}
+		});
+		
+		txtPort.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent arg0) {
+				lblPortinfo.setForeground(Color.RED);
+				String checa = txtPort.getText();
+				lblPortinfo.setText(validaPort(checa));
+			}
+		});
+		txtIp.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent arg0) {
+				lblIpinfo.setForeground(Color.RED);
+				String checa = txtIp.getText();
+				lblIpinfo.setText(validaIp(checa));
 			}
 		});
 		
@@ -288,7 +372,6 @@ public class Login extends JFrame {
 		passwordField.addFocusListener(new FocusAdapter() {
 			@Override
 			public void focusLost(FocusEvent arg0) {
-				lblUsrInfo.setForeground(Color.RED);
 				String checa = new String(passwordField.getPassword());
 				if (checa.matches(".*[^A-Za-z0-9!@#\\$%&\\*\\(\\)\\-_=\\+\\[\\{\\]\\}].*")) {
 					lblPwInfo.setText("Caractere inválido");
@@ -302,6 +385,49 @@ public class Login extends JFrame {
 			}
 		});
 		
+		txtPort.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent arg0) {
+				lblPortinfo.setForeground(Color.RED);
+				String checa = txtPort.getText();
+				if (!checa.isEmpty()) {
+					lblPortinfo.setText(validaPort(checa));
+				}
+			}
+		});
+		
+		txtIp.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent arg0) {
+				lblIpinfo.setForeground(Color.RED);
+				String checa = txtIp.getText();
+				if (!checa.isEmpty()) {
+					lblIpinfo.setText(validaIp(checa));
+				}
+			}
+		});
+		
+	}
+	
+	static String validaIp(String ip) {
+		if (!(ip.matches("([0-9]{1,3}\\.){3}[0-9]{1,3}") || ip.equals("localhost"))) {
+			return "IP inválido";
+		} else {
+			return "";
+		}
+	}
+	
+	static String validaPort(String port) {
+		try {
+			int porta = Integer.parseInt(port);
+			if (porta > 65535 || porta < 1) {
+				return "Porta inválida";
+			} else {
+				return "";
+			}
+		} catch (NumberFormatException e) {
+			return "Porta inválida";
+		}
 	}
 	
 	static String validaUsr(String usr) {
