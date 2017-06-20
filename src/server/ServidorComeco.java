@@ -1,7 +1,5 @@
 package server;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
@@ -15,24 +13,26 @@ import java.util.ArrayList;
  */
 public class ServidorComeco implements Runnable {
 	ArrayList<String> listaDeUsuarios;
+	int port;
 	
-	public ServidorComeco(ArrayList<String> listaDeUsuarios) {
+	public ServidorComeco(ArrayList<String> listaDeUsuarios, int port) {
 		this.listaDeUsuarios = listaDeUsuarios;
+		this.port = port;
 	}
 	
 	public void run() {
 		try {
-			File usuariosCadastrados = new File("testeDatabase");
-			if (!usuariosCadastrados.isFile()) {
-				FileWriter fw = new FileWriter(usuariosCadastrados);
-				fw.write(0 + "\n");
-				fw.close();
-			}
-			ServerSocket servidor = new ServerSocket(2020);
+//			File usuariosCadastrados = new File("testeDatabase");
+//			if (!usuariosCadastrados.isFile()) {
+//				FileWriter fw = new FileWriter(usuariosCadastrados);
+//				fw.write(0 + "\n");
+//				fw.close();
+//			}
+			ServerSocket servidor = new ServerSocket(this.port);
 			while (true) {
 				Socket connectionSocket = servidor.accept();
-				(new Thread(new ServidorCadastroLogin(
-						connectionSocket, listaDeUsuarios, usuariosCadastrados))).start();
+				(new Thread(new ServidorConta(
+						connectionSocket, listaDeUsuarios))).start();
 			}
 		} catch (BindException e) {
 			System.err.println("ERRO: Esta porta já está em uso.");
