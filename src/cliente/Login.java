@@ -163,8 +163,9 @@ public class Login extends JFrame {
 						Map.Entry<ArrayList<ServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 						int status = mp.getValue().intValue();
 						if (status == 1) {
-		//					//lembrar de mudar p o nosso protocolo
-							Profile p=new Profile(null);
+		//					// TODO lembrar de mudar p o nosso protocolo
+							// TODO fazer Profile aceitar os 6 ServerSockets
+							Profile p = new Profile(null);
 							p.setVisible(true);
 							setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
 							lblUsrInfo.setForeground(Color.GREEN);
