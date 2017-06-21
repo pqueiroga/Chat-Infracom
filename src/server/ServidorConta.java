@@ -41,12 +41,52 @@ public class ServidorConta implements Runnable {
 			int operacao = inFromClient.read();
 			byte[] buffer = new byte[256];
 			
-			if (operacao == 10) { // lista amigos (inclusive offline)
+			if (operacao == 11) { // login automatico
+				BancoAmizade banco = new BancoAmizade();
+				banco.conectar();
+				if (banco.conectado()) {
+					outToClient.write(1);
+					String username = BufferMethods.readString(inFromClient);
+					if (banco.usuarioExiste(username)) {
+						// checa se usuario ja esta online
+						int usrOn = -1;
+						synchronized (listaDeUsuarios) {
+							usrOn = usuarioListaOnline(listaDeUsuarios, username);
+						}
+						if (usrOn != -1) {
+							System.out.println("Usuario já está online");
+							outToClient.write(2);
+						} else {
+							outToClient.write(1);
+							// lê o número de porta
+							inFromClient.read(buffer, 0, 5);
+							int port = Integer.parseInt(BufferMethods.byteArraytoString(buffer, 5));
+							System.out.println("Indo inserir na lista");
+							synchronized (listaDeUsuarios) {
+								listaDeUsuarios.add( username + " ("
+										+ connectionSocket.getInetAddress().getHostAddress() + ", "
+										+ port + ")");
+								listaDeUsuarios.sort(String::compareToIgnoreCase);
+								listaDeUsuarios.notify();
+							}
+							System.out.println(listaDeUsuarios);
+							synchronized (timer) {
+								timer.put(username, new Long(System.currentTimeMillis()));
+							}
+						}
+					} else {
+						outToClient.write(0);
+					}
+				} else {
+					outToClient.write(0);
+				}
+			} else if (operacao == 10) { // lista amigos (inclusive offline)
 				// se conecta ao banco de dados
 				BancoAmizade banco = new BancoAmizade();
 				banco.conectar();
 				if (banco.conectado()) {
-					ArrayList<String> flOnlineOffline = new ArrayList<String>();
+					ArrayList<String> flOnline = new ArrayList<String>();
+					ArrayList<String> flOffline = new ArrayList<String>();
 					outToClient.write(1);
 					String username = BufferMethods.readString(inFromClient);
 					ArrayList<String> fl = banco.listarAmigos(username);
@@ -60,14 +100,14 @@ public class ServidorConta implements Runnable {
 								String temp = listaDeUsuarios.get(i);
 								if (temp.indexOf(' ') != -1) {
 									if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
-										flOnlineOffline.add(temp);
+										flOnline.add(temp);
 										jOk = true;
 										break;
 									}
 								}
 							}
 							if (!jOk) {
-								flOnlineOffline.add(fl.get(j));
+								flOffline.add(fl.get(j));
 							}
 							j++;
 						}
@@ -76,9 +116,12 @@ public class ServidorConta implements Runnable {
 //							j++;
 //						}
 					}
-					outToClient.write(flOnlineOffline.size());
-					for (String str : flOnlineOffline) {
+					outToClient.write(flOnline.size() + flOffline.size());
+					for (String str : flOnline) {
 						BufferMethods.writeString(str, outToClient);
+					}
+					for (String str : flOffline) {
+						BufferMethods.writeChatString(str, outToClient);
 					}
 					synchronized (timer) {
 						timer.put(username, new Long(System.currentTimeMillis()));						

@@ -4,37 +4,32 @@ import java.awt.EventQueue;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.net.BindException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.Scanner;
-
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextPane;
-import javax.swing.UnsupportedLookAndFeelException;
-import javax.swing.border.EmptyBorder;
-
-import utility.server.ServerAPI;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.BindException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Iterator;
+
 import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import javax.swing.JTextPane;
+import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.border.EmptyBorder;
 
 /**
  * Janela do servidor
@@ -46,6 +41,7 @@ public class ServerGUI extends JFrame {
 	private JPanel contentPane;
 	private JTextField txtPorta;
 	ArrayList<String> listaDeUsuarios;
+	private ServerSocket wSocket;
 
 	/**
 	 * Launch the application.
@@ -54,7 +50,7 @@ public class ServerGUI extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					ServerGUI frame = new ServerGUI();
+					new ServerGUI();
 //					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -127,7 +123,7 @@ public class ServerGUI extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				try {
 					int port = Integer.parseInt(txtPorta.getText());
-					ServerSocket wSocket = new ServerSocket(port);
+					wSocket = new ServerSocket(port);
 					(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 					(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
 					setTitle("Funcionando na porta " + port);
@@ -151,7 +147,7 @@ public class ServerGUI extends JFrame {
 				if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
 					try {
 						int port = Integer.parseInt(txtPorta.getText());
-						ServerSocket wSocket = new ServerSocket(port);
+						wSocket = new ServerSocket(port);
 						(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 						(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
 						setTitle("Funcionando na porta " + port);
@@ -193,29 +189,37 @@ public class ServerGUI extends JFrame {
 		this.setVisible(true);
 		
 		/*
-		 *  TODO arrumar esse troço. A ideia é avisar pra todo mundo que o servidor vai ficar fora do ar.
-		 *  Provavelmente vamos precisar abrir uma thread no cliente que fica esperando só por esse sinal
-		 *  e quando receber, avisa pro cliente com um JDialog e fecha a aplicação qdo ele clicar OK!
+		 *  A ideia era avisar pra todo mundo que o servidor vai ficar fora do ar.
+		 *  Mas não precisa mais, já que o cliente fica cutucando o servidor regularmente.
 		 */
 		addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
-				synchronized (listaDeUsuarios) {
-					for (String str : listaDeUsuarios) {
-						try {
-							str = str.substring(str.indexOf('(') + 1, str.lastIndexOf(')'));
-							String tokens[] = str.split(", ");
-							Socket connectionSocket = new Socket(tokens[0], Integer.parseInt(tokens[1]) + 5);
-							OutputStream os = connectionSocket.getOutputStream();
-							os.write(0);
-							connectionSocket.close();
-						} catch (Exception e1) {
-							System.out.println("Provavelmente não deu para avisar pra (" + str + ") que "
-									+ "o servidor vai ficar fora do ar agora.\n" + e1.getClass().getName() + 
-									" " + e1.getMessage());
-						}
+				if (wSocket != null) {
+					try {
+						wSocket.close();
+					} catch (IOException e1) {
+						e1.printStackTrace();
 					}
 				}
+				
+				// removido pois não tem necessidade mais
+//				synchronized (listaDeUsuarios) {
+//					for (String str : listaDeUsuarios) {
+//						try {
+//							str = str.substring(str.indexOf('(') + 1, str.lastIndexOf(')'));
+//							String tokens[] = str.split(", ");
+//							Socket connectionSocket = new Socket(tokens[0], Integer.parseInt(tokens[1]) + 5);
+//							OutputStream os = connectionSocket.getOutputStream();
+//							os.write(0);
+//							connectionSocket.close();
+//						} catch (Exception e1) {
+//							System.out.println("Provavelmente não deu para avisar pra (" + str + ") que "
+//									+ "o servidor vai ficar fora do ar agora.\n" + e1.getClass().getName() + 
+//									" " + e1.getMessage());
+//						}
+//					}
+//				}
 			}
 		});
 	}
