@@ -23,6 +23,8 @@ import java.net.*;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+
 import javax.swing.JTextPane;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
@@ -34,6 +36,7 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.Color;
 import javax.swing.JFormattedTextField;
+import java.awt.SystemColor;
 
 public class Login extends JFrame {
 	private ServerAPI toServer;
@@ -63,9 +66,41 @@ public class Login extends JFrame {
 	 * Create the frame.
 	 */
 	public Login() {
+		setResizable(false);
+		int randomNum = ThreadLocalRandom.current().nextInt(2, 9 + 1);
+		Color cor;
+		switch (randomNum) {
+		case 2:
+			cor = Color.BLUE;
+			break;
+		case 3:
+			cor = Color.CYAN;
+			break;
+		case 4:
+			cor = Color.GRAY;
+			break;
+		case 5:
+			cor = Color.LIGHT_GRAY;
+		case 6:
+			cor = Color.MAGENTA;
+			break;
+		case 7:
+			cor = Color.PINK;
+			break;
+		case 8:
+			cor = Color.WHITE;
+			break;
+		case 9:
+			cor = Color.YELLOW;
+		default:
+			cor = null;	
+		}
+		setBackground(cor);
+		setTitle("untitled spaceship");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 376, 289);
+		setBounds(100, 100, 467, 289);
 		contentPane = new JPanel();
+		contentPane.setBackground(cor);
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		GridBagLayout gbl_contentPane = new GridBagLayout();
@@ -392,6 +427,8 @@ public class Login extends JFrame {
 				String checa = txtPort.getText();
 				if (!checa.isEmpty()) {
 					lblPortinfo.setText(validaPort(checa));
+				} else {
+					lblPortinfo.setText("");
 				}
 			}
 		});
@@ -403,6 +440,8 @@ public class Login extends JFrame {
 				String checa = txtIp.getText();
 				if (!checa.isEmpty()) {
 					lblIpinfo.setText(validaIp(checa));
+				} else {
+					lblIpinfo.setText("");
 				}
 			}
 		});

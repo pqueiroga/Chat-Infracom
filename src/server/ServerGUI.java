@@ -73,7 +73,7 @@ public class ServerGUI extends JFrame {
 	public ServerGUI() throws ClassNotFoundException, InstantiationException, IllegalAccessException, UnsupportedLookAndFeelException {
 		listaDeUsuarios = new ArrayList<String>();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 300, 300);
+		setBounds(100, 100, 300, 485);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);

@@ -27,6 +27,9 @@ import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
+
 import javax.swing.JProgressBar;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
@@ -44,7 +47,6 @@ public class Chat extends JFrame {
 	private String txtTypeFile = "Caminho do arquivo";
 	private OutputStream outToFriend;
 	private InputStream inFromFriend;
-	private int statusMsgEnviada;
 	private boolean servicoStatusMsgOk;
 	
 	/**
@@ -65,6 +67,7 @@ public class Chat extends JFrame {
 	}
 	
 	public Chat(String usr, String friend, Socket connectionSocket, Socket msgStatusSocket, ArrayList<ServerSocket> SSList) throws IOException {
+		setResizable(false);
 		// TODO lembrar de mudar p nosso protocolo
 		servicoStatusMsgOk = true;
 		setTitle(usr + " conversa com " + friend);
@@ -75,12 +78,45 @@ public class Chat extends JFrame {
 		OutputStream msgStatusOutput = msgStatusSocket.getOutputStream();
 		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 549, 537);
+		setBounds(100, 100, 450, 647); //549, 537);
 		contentPane = new JPanel();
+		int randomNum = ThreadLocalRandom.current().nextInt(1, 9 + 1);
+		Color cor;
+		switch (randomNum) {
+		case 1:
+			cor = Color.BLACK;
+			break;
+		case 2:
+			cor = Color.BLUE;
+			break;
+		case 3:
+			cor = Color.CYAN;
+			break;
+		case 4:
+			cor = Color.DARK_GRAY;
+			break;
+		case 5:
+			cor = Color.GRAY;
+			break;
+		case 6:
+			cor = Color.LIGHT_GRAY;
+		case 7:
+			cor = Color.MAGENTA;
+			break;
+		case 8:
+			cor = Color.PINK;
+			break;
+		case 9:
+			cor = Color.WHITE;
+			break;
+		default:
+			cor = null;	
+		}
+		contentPane.setBackground(cor);
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		GridBagLayout gbl_contentPane = new GridBagLayout();
-		gbl_contentPane.columnWidths = new int[]{318, 101, 0};
+		gbl_contentPane.columnWidths = new int[]{288, 101, 0};
 		gbl_contentPane.rowHeights = new int[]{419, 23, 23, 23, 0};
 		gbl_contentPane.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
 		gbl_contentPane.rowWeights = new double[]{1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
@@ -203,7 +239,6 @@ public class Chat extends JFrame {
 						// não deveria dar isto
 						e.printStackTrace();
 					} catch (Exception e) {
-						statusMsgEnviada = 0;
 						lblMsgInfo.setForeground(Color.RED);
 						lblMsgInfo.setText("mensagem não foi enviada");
 						e.printStackTrace();
@@ -241,7 +276,6 @@ public class Chat extends JFrame {
 					// não deveria dar isto
 					e.printStackTrace();
 				} catch (Exception e) {
-					statusMsgEnviada = 0;
 					lblMsgInfo.setForeground(Color.RED);
 					lblMsgInfo.setText("mensagem não foi enviada");
 					e.printStackTrace();

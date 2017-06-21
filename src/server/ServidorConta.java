@@ -6,6 +6,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
@@ -21,10 +23,12 @@ public class ServidorConta implements Runnable {
 
 	private Socket connectionSocket;
 	private ArrayList<String> listaDeUsuarios;
+	private Map<String, Long> timer;
 	
-	public ServidorConta(Socket connectionSocket, ArrayList<String> listaDeUsuarios) {
+	public ServidorConta(Map<String, Long> timer, Socket connectionSocket, ArrayList<String> listaDeUsuarios) {
 		this.connectionSocket = connectionSocket;
 		this.listaDeUsuarios = listaDeUsuarios;
+		this.timer = timer;
 	}
 	
 	@Override
@@ -76,6 +80,9 @@ public class ServidorConta implements Runnable {
 					for (String str : flOnlineOffline) {
 						BufferMethods.writeString(str, outToClient);
 					}
+					synchronized (timer) {
+						timer.put(username, new Long(System.currentTimeMillis()));						
+					}
 				} else {
 					outToClient.write(0);
 				}
@@ -91,6 +98,9 @@ public class ServidorConta implements Runnable {
 					outToClient.write(solpen.size());
 					for (String str : solpen) {
 						BufferMethods.writeString(str, outToClient);
+					}
+					synchronized (timer) {
+						timer.put(username, new Long(System.currentTimeMillis()));						
 					}
 				} else {
 					outToClient.write(0);
@@ -126,9 +136,13 @@ public class ServidorConta implements Runnable {
 							j++;
 						}
 					}
+					
 					outToClient.write(flOnline.size());
 					for (String str : flOnline) {
 						BufferMethods.writeString(str, outToClient);
+					}
+					synchronized (timer) {
+						timer.put(username, new Long(System.currentTimeMillis()));						
 					}
 				} else {
 					outToClient.write(0);
@@ -226,12 +240,18 @@ public class ServidorConta implements Runnable {
 				// recebe nome de usuario
 				String username = BufferMethods.readString(inFromClient);
 				boolean logouOut = false;
+				int pos = -1;
 				synchronized (listaDeUsuarios) {
-					int pos = usuarioListaOnline(listaDeUsuarios, username, connectionSocket.getInetAddress().getHostAddress());
+					pos = usuarioListaOnline(listaDeUsuarios, username, connectionSocket.getInetAddress().getHostAddress());
 					if (pos != -1 ) {
 						listaDeUsuarios.remove(pos);
 						listaDeUsuarios.notify();
 						logouOut = true;
+					}
+				}
+				if (logouOut && pos != -1) {
+					synchronized(timer) {
+						timer.remove(username);
 					}
 				}
 				if (logouOut) {
@@ -306,6 +326,9 @@ public class ServidorConta implements Runnable {
 											+ port + ")");
 									listaDeUsuarios.sort(String::compareToIgnoreCase);
 									listaDeUsuarios.notify();
+								}
+								synchronized (timer) {
+									timer.put(username, new Long(System.currentTimeMillis()));						
 								}
 							} else {
 								System.out.println("o cara n conseguiu achar porta pro servidor lol");
