@@ -166,15 +166,20 @@ public class BancoAmizade {
 	 * @param salt sal do hash
 	 * @param pw senha
 	 * @return verdadeiro se conseguiu cadastrar, falso cc.
+	 * @throws MySQLIntegrityConstraintViolationException 
 	 */
-	public boolean cadastrarUsuario(String user, String salt, String pw) {
+	public boolean cadastrarUsuario(String user, String salt, String pw) throws MySQLIntegrityConstraintViolationException {
 		try {	
 			String query = "INSERT INTO `users` (`username`, `salt`, `password`) VALUES"
 					+ "('"+ user +"', '"+ salt +"', '"+ pw +"');";
 			this.statement.executeUpdate(query);
 			return true;
-		} catch (Exception e) {
+		} catch (MySQLIntegrityConstraintViolationException e) {
 			System.out.println(e.getMessage());
+			throw e;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return false;
 	}

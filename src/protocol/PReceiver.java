@@ -14,7 +14,7 @@ import java.io.IOException;
 public class PReceiver {
 	/*	time de timeout
 	 * 	DatagramSocket para receber datagramas
-	 * 	PipedOutputStream para enviar dados à aplicação */
+	 * 	PipedOutputStream para enviar dados Ã  aplicaÃ§Ã£o */
 	private DatagramSocket datagramSocket;
 	private DatagramPacket datagramPacket;
 	private PSender senderSide;
@@ -27,8 +27,8 @@ public class PReceiver {
 	
 	/**
 	 * Cria parte receptora de datagramas de uma Socket.
-	 * @param dataReader PipedInputStream da thread que receberá os dados da Socket.
-	 * @param datagramSocket Socket de datagramas que receberá dados.
+	 * @param dataReader PipedInputStream da thread que receberÃ¡ os dados da Socket.
+	 * @param datagramSocket Socket de datagramas que receberÃ¡ dados.
 	 * @param datagramPacket DatagramPacket com buffer para receber datagramas.
 	 */
 	public PReceiver(PipedInputStream dataReader, DatagramSocket datagramSocket, DatagramPacket datagramPacket) {
@@ -65,9 +65,9 @@ public class PReceiver {
 		return message;
 	}
 	
-	/*	Método para julgar datagrama e decidir como proceder */
+	/*	Mï¿½todo para julgar datagrama e decidir como proceder */
 	/**
-	 * Método para julgar segmentos e decidir como proceder.
+	 * Mï¿½todo para julgar segmentos e decidir como proceder.
 	 * @param toJudge Segmento a ser julgado.
 	 * @return Integer representando possibilidade de resposta.
 	 */

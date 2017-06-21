@@ -36,13 +36,15 @@ public class ServerAPI {
 	 * Método que cliente usa para solicitar cadastro ao servidor
 	 * @param username Nome de usuário validado
 	 * @param password Senha validada
-	 * @return -2 = alguma exception nesse método. -1 = usuario ja online
-	 * 0 = falha comum (login invlido, senha, usrname indisponivel)
+	 * @return -1 = erro BD
+	 * 0 = falha sem muita razao clara
 	 * 1 = sucesso
+	 * 2 = username indisponivel
+	 * 3 = usrname invalido, senha invalida, nunca deveria dar se o cliente validar
 	 * @throws IOException 
 	 * @throws GeneralSecurityException 
 	 */
-	public boolean cadastro(String username, String password) throws IOException, GeneralSecurityException {
+	public int cadastro(String username, String password) throws IOException, GeneralSecurityException {
 		Socket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
@@ -72,13 +74,9 @@ public class ServerAPI {
 				// recebe do servidor status do cadastro (sucesso ou falha)
 				int codigo = inFromServer.read();
 				connectionSocket.close();
-				if (codigo == 1) {
-					return true; 
-				} else {
-					return false;
-				}
+				return codigo;
 			} else {
-				return false;
+				return -1;
 			}
 		} catch (IOException e) {
 			throw e;
@@ -102,7 +100,11 @@ public class ServerAPI {
 	 * @param username Nome de usuario
 	 * @param password Senha
 	 * @return dois valores, um ServerSocket e um inteiro. O inteiro é um código de status (sucesso ou pq falhou).
-	 * Se falhou, retorna uma ServerSocket nula.
+	 * Se falhou, retorna uma ServerSocket nula.<br>
+	 * -1 quer dizer que cliente não conseguiu portas<br>
+	 * 0 quer dizer usuário ou senha incorretos<br>
+	 * 1 quer dizer OK<br>
+	 * 2 quer dizer usuário já está online
 	 * @throws GeneralSecurityException 
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -166,7 +168,7 @@ public class ServerAPI {
 							temp5 = new ServerSocket(portaDaSessao);
 							returnSocket.add(temp5); // solicitação de amizade
 							portaDaSessao++;
-							temp6 = new ServerSocket(2030);
+							temp6 = new ServerSocket(portaDaSessao);
 							returnSocket.add(temp6); // ping
 						} catch (IOException e) {
 							returnSocket.clear();
@@ -197,6 +199,7 @@ public class ServerAPI {
 						// envia número de porta
 						outToServer.write(buffer, 0, 5);
 					} else {
+						status = -1;
 						outToServer.write(0);
 					}
 				}

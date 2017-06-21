@@ -76,4 +76,17 @@ public class BufferMethods {
 		String str = BufferMethods.byteArraytoString(buffer, strlen);
 		return str;
 	}
+	
+	public static String readChatString(InputStream is) throws IOException {
+		byte[] buffer = new byte [1024];
+		int strlen = is.read();
+		is.read(buffer, 0, strlen);
+		return new String(buffer, 0, strlen, "UTF-8");
+	}
+	
+	public static void writeChatString(String str, OutputStream os) throws IOException {
+		byte[] buffer = str.getBytes("UTF-8");
+		os.write(buffer.length);
+		os.write(buffer, 0, buffer.length);
+	}
 }

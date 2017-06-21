@@ -6,6 +6,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
@@ -21,10 +23,12 @@ public class ServidorConta implements Runnable {
 
 	private Socket connectionSocket;
 	private ArrayList<String> listaDeUsuarios;
+	private Map<String, Long> timer;
 	
-	public ServidorConta(Socket connectionSocket, ArrayList<String> listaDeUsuarios) {
+	public ServidorConta(Map<String, Long> timer, Socket connectionSocket, ArrayList<String> listaDeUsuarios) {
 		this.connectionSocket = connectionSocket;
 		this.listaDeUsuarios = listaDeUsuarios;
+		this.timer = timer;
 	}
 	
 	@Override
@@ -49,28 +53,35 @@ public class ServidorConta implements Runnable {
 					banco.desconectar();
 					synchronized (listaDeUsuarios) {
 						int j = 0;
-						// válido pois as duas estão ordenadas alfabeticamente com o mesmo comparador
-						// o compareToIgnoreCase
-						for (int i = 0; i < listaDeUsuarios.size(); i++) {
-							if (j >= fl.size()) {
-								break;
-							}
-							String temp = listaDeUsuarios.get(i);
-							if (temp.indexOf(' ') != -1) {
-								if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
-									flOnlineOffline.add(temp);
-									j++;
+						boolean jOk;
+						while (j < fl.size()) {
+							jOk = false;
+							for (int i = 0; i < listaDeUsuarios.size(); i++) {
+								String temp = listaDeUsuarios.get(i);
+								if (temp.indexOf(' ') != -1) {
+									if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
+										flOnlineOffline.add(temp);
+										jOk = true;
+										break;
+									}
 								}
 							}
-						}
-						while (j < fl.size()) {
-							flOnlineOffline.add(fl.get(j)); // adiciona os offlines à lista tb
+							if (!jOk) {
+								flOnlineOffline.add(fl.get(j));
+							}
 							j++;
 						}
+//						while (j < fl.size()) {
+//							flOnlineOffline.add(fl.get(j)); // adiciona os offlines à lista tb
+//							j++;
+//						}
 					}
 					outToClient.write(flOnlineOffline.size());
 					for (String str : flOnlineOffline) {
 						BufferMethods.writeString(str, outToClient);
+					}
+					synchronized (timer) {
+						timer.put(username, new Long(System.currentTimeMillis()));						
 					}
 				} else {
 					outToClient.write(0);
@@ -88,6 +99,9 @@ public class ServidorConta implements Runnable {
 					for (String str : solpen) {
 						BufferMethods.writeString(str, outToClient);
 					}
+					synchronized (timer) {
+						timer.put(username, new Long(System.currentTimeMillis()));						
+					}
 				} else {
 					outToClient.write(0);
 				}
@@ -103,24 +117,32 @@ public class ServidorConta implements Runnable {
 					banco.desconectar();
 					synchronized (listaDeUsuarios) {
 						int j = 0;
-						// válido pois as duas estão ordenadas alfabeticamente com o mesmo comparador
-						// o compareToIgnoreCase
-						for (int i = 0; i < listaDeUsuarios.size(); i++) {
-							if (j >= fl.size()) {
-								break;
-							}
-							String temp = listaDeUsuarios.get(i);
-							if (temp.indexOf(' ') != -1) {
-								if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
-									flOnline.add(temp);
-									j++;
+						boolean jOk;
+						while (j < fl.size()) {
+							jOk = false;
+							for (int i = 0; i < listaDeUsuarios.size(); i++) {
+								if (j >= fl.size()) {
+									break;
+								}
+								String temp = listaDeUsuarios.get(i);
+								if (temp.indexOf(' ') != -1) {
+									if ((temp.substring(0, temp.indexOf(' '))).equals(fl.get(j))) {
+										flOnline.add(temp);
+										jOk = true;
+										break;
+									}
 								}
 							}
+							j++;
 						}
 					}
+					
 					outToClient.write(flOnline.size());
 					for (String str : flOnline) {
 						BufferMethods.writeString(str, outToClient);
+					}
+					synchronized (timer) {
+						timer.put(username, new Long(System.currentTimeMillis()));						
 					}
 				} else {
 					outToClient.write(0);
@@ -218,12 +240,18 @@ public class ServidorConta implements Runnable {
 				// recebe nome de usuario
 				String username = BufferMethods.readString(inFromClient);
 				boolean logouOut = false;
+				int pos = -1;
 				synchronized (listaDeUsuarios) {
-					int pos = usuarioListaOnline(listaDeUsuarios, username, connectionSocket.getInetAddress().getHostAddress());
+					pos = usuarioListaOnline(listaDeUsuarios, username, connectionSocket.getInetAddress().getHostAddress());
 					if (pos != -1 ) {
 						listaDeUsuarios.remove(pos);
 						listaDeUsuarios.notify();
 						logouOut = true;
+					}
+				}
+				if (logouOut && pos != -1) {
+					synchronized(timer) {
+						timer.remove(username);
 					}
 				}
 				if (logouOut) {
@@ -299,6 +327,9 @@ public class ServidorConta implements Runnable {
 									listaDeUsuarios.sort(String::compareToIgnoreCase);
 									listaDeUsuarios.notify();
 								}
+								synchronized (timer) {
+									timer.put(username, new Long(System.currentTimeMillis()));						
+								}
 							} else {
 								System.out.println("o cara n conseguiu achar porta pro servidor lol");
 							}
@@ -340,20 +371,24 @@ public class ServidorConta implements Runnable {
 					
 					boolean cadastroOk;
 					if (username.length() > 20 || usrSalt.length() > 32 || usrPw.length() > 128) {
-						cadastroOk = false;
+						outToClient.write(3);
 					} else {
-						cadastroOk = banco.cadastrarUsuario(username, usrSalt, usrPw);
+						try {
+							cadastroOk = banco.cadastrarUsuario(username, usrSalt, usrPw);
+							if (cadastroOk) {
+								// conseguiu cadastrar
+								System.out.println("Cadastro OK de " + username);
+								outToClient.write(1);
+							} else {
+								// nao conseguiu cadastrar
+								System.out.println("Não consegui cadastrar " + username);
+								outToClient.write(0);
+							}
+						} catch (MySQLIntegrityConstraintViolationException e) {
+							outToClient.write(2);
+						}
 					}
 					banco.desconectar();
-					if(cadastroOk) {
-						// conseguiu cadastrar
-						System.out.println("Cadastro OK de " + username);
-						outToClient.write(1);
-					} else {
-						// nao conseguiu cadastrar
-						System.out.println("Não consegui cadastrar " + username);
-						outToClient.write(0);
-					}
 				} else {
 					outToClient.write(0); // não conseguiu se conectar ao BD.
 				}
