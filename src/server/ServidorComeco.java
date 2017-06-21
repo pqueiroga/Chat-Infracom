@@ -37,11 +37,8 @@ public class ServidorComeco implements Runnable {
 				(new Thread(new ServidorConta(timer,
 						connectionSocket, listaDeUsuarios))).start();
 			}
-		} catch (BindException e) {
-			System.err.println("ERRO: Esta porta já está em uso.");
-			e.printStackTrace();
 		} catch (IOException e) {
-			System.err.println("ERRO: Erro desconhecido ao tentar iniciar servidor.");
+			System.err.println("ERRO: Erro desconhecido ao aceitar conexão.");
 			e.printStackTrace();
 		} finally {
 		}

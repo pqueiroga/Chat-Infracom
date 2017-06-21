@@ -138,7 +138,7 @@ public class ServerAPI {
 				// envia a senha criptografada
 				BufferMethods.toByteArray(buffer1, nicepw);
 				outToServer.write(buffer1, 0, 128);
-				// recebe do servidor status do cadastro (sucesso ou falha)
+				// recebe do servidor status do login (sucesso ou falha)
 				status = inFromServer.read();
 				
 				// agora checamos se acertamos as credenciais, se acertamos então podemos criar uma ServerSocket
@@ -220,6 +220,62 @@ public class ServerAPI {
 			}
 		}
 		return new AbstractMap.SimpleEntry<ArrayList<ServerSocket>, Integer>(returnSocket, new Integer(status));
+	}
+	
+	/**
+	 * Método que cliente usa para login automático quando consegue reconectar ao servidor.
+	 * @param username Nome de usuario
+	 * @return um código de status (sucesso ou pq falhou).
+	 * Se falhou, retorna uma ServerSocket nula.<br>
+	 * -2 quere dizer erro na conexão com BD<br>
+	 * 0 quer dizer usuário incorreto (não deveria dar)<br>
+	 * 1 quer dizer OK<br>
+	 * 2 quer dizer usuário já está online
+	 * @throws GeneralSecurityException 
+	 * @throws UnknownHostException
+	 * @throws IOException
+	 */
+	public int login(String username, int chatPort)
+			throws GeneralSecurityException, IOException {
+		Socket connectionSocket = null;
+		int status = -2;
+		try {
+			// se conecta ao servidor de operações
+			connectionSocket = new Socket(this.ip, this.port);
+			OutputStream outToServer = connectionSocket.getOutputStream();
+			InputStream inFromServer = connectionSocket.getInputStream();
+			// cadastro(0), login(1)		
+			outToServer.write(11);
+			
+			int bdOK = inFromServer.read();
+			
+			if (bdOK == 1) {				
+				BufferMethods.writeString(username, outToServer);
+				
+				// recebe do servidor status do login (sucesso ou falha)
+				status = inFromServer.read();
+				
+				if (status == 1) {
+					byte[] buffer = new byte[256];
+					BufferMethods.toByteArray(buffer, chatPort);
+					// envia número de porta
+					outToServer.write(buffer, 0, 5);
+				}
+			}	
+		} catch (IOException e) {
+			throw e;
+		} finally {
+			if (connectionSocket != null) {
+				if (!connectionSocket.isClosed()) {
+					try {
+						connectionSocket.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		return status;
 	}
 	
 	/**

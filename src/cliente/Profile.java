@@ -1,41 +1,37 @@
 package cliente;
 
+import java.awt.Color;
 import java.awt.EventQueue;
-
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-
-import cliente.threads.ReceiveMessages;
-import utility.buffer.BufferMethods;
-import utility.server.ServerAPI;
-
-import javax.swing.JLabel;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
-import java.awt.Color;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.Timer;
-
-import cliente.threads.*;
-import java.net.*;
-import java.util.ArrayList;
-import java.util.concurrent.ThreadLocalRandom;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.IOException;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.awt.ScrollPane;
-
+import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
+
+import utility.buffer.BufferMethods;
+import utility.server.ServerAPI;
 
 public class Profile extends JFrame {
 
@@ -49,6 +45,7 @@ public class Profile extends JFrame {
 	private String friendname;
 	private int friendPort;
 	private JDialog addRemoveAmigo;
+	private String contatandoServStr;
 	/**
 	 * Create the frame.
 	 */
@@ -74,6 +71,7 @@ public class Profile extends JFrame {
 		this.frame = this;
 		this.addRemoveAmigo = new AddRemoveAmigoDialog(username, ip, port);
 		this.addRemoveAmigo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+		this.contatandoServStr = "Tentando contatar servidor";
 		ServerAPI toServer = new ServerAPI(ip, port);
 		
 		int randomNum = ThreadLocalRandom.current().nextInt(3, 9 + 1);
@@ -226,14 +224,13 @@ public class Profile extends JFrame {
 				btn.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent e1) {
 						if (!friendIP.isEmpty()) {
-							Chat chat = null;
+							Chat chat;
 							try {
 								Socket connectionSocket = new Socket(friendIP, friendPort);
 								BufferMethods.writeString(username, connectionSocket.getOutputStream());
 								Socket msgStatusSocket = new Socket(friendIP, friendPort +1);
 								chat = new Chat(username, friendname, connectionSocket, msgStatusSocket, 
-										listenList);
-								chat.setVisible(true);
+										listenList, true);
 							} catch (IOException e) {
 							    JOptionPane.showMessageDialog(frame, "Não foi possível alcançar " + friendname, "Erro",
 							            JOptionPane.WARNING_MESSAGE);
@@ -250,12 +247,12 @@ public class Profile extends JFrame {
 			servNResponde++;
 			System.out.println("Servidor não respondeu, tentando reconectar...");
 			lblConectividadeComServidor.setForeground(Color.YELLOW);
-			lblConectividadeComServidor.setText("Tentando contatar servidor");
+			lblConectividadeComServidor.setText(contatandoServStr);
 		} catch (IOException e) {
 			servNResponde++;
 			System.out.println("Servidor não respondeu, tentando reconectar...");
 			lblConectividadeComServidor.setForeground(Color.YELLOW);
-			lblConectividadeComServidor.setText("Tentando contatar servidor");
+			lblConectividadeComServidor.setText(contatandoServStr);
 			e.printStackTrace();
 		}
 		Thread espconv = new Thread(new esperaConversas(username, listenList));
@@ -311,10 +308,25 @@ public class Profile extends JFrame {
 					} catch (IOException e) {			
 						e.printStackTrace();
 					}
-					panel.removeAll();
-					panel.repaint();
 					try {
 						ArrayList<String> amigos = toServerConc.pegaAmigos(username);
+						if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
+							try {
+								int loginstatus = toServer.login(username, listenList.get(0).getLocalPort());
+								if (loginstatus == 2) {
+								    JOptionPane.showMessageDialog(frame, username + " está logado em outra sessão. O programa"
+								    		+ " será fechado. Entre em contato conosco se você acha que tem algo"
+								    		+ " errado com a sua conta.", "Erro",
+								            JOptionPane.WARNING_MESSAGE);
+								    frame.dispose();
+								}
+							} catch (GeneralSecurityException e) {
+								// nunca deveria dar
+								e.printStackTrace();
+							}
+						}
+						panel.removeAll();
+						panel.repaint();
 						for (String str : amigos) {
 							JButton btn = new JButton(str);
 							int fP = str.indexOf('('), lP = str.lastIndexOf(')');
@@ -334,14 +346,20 @@ public class Profile extends JFrame {
 									if (!friendIP.isEmpty()) {
 										Chat chat;
 										try {
+											// TODO adicionar a um arraylist de chats, para que eu possa checar se eu não
+											// já tenho uma instância aberta desse cara.
+											// eu passo esse arraylist pro chat e qdo ele for fechado eu tiro da lista
+											// o friendname. quando algum for aberto, eu adiciono à lista.
+											// inicializar o txt field da msg com o que eu ler do arquivo
+											// de histórico da conversa tupla (username, friendname)
 											Socket connectionSocket = new Socket(friendIP, friendPort);
 											BufferMethods.writeString(username, connectionSocket.getOutputStream());
 											Socket msgStatusSocket = new Socket(friendIP, friendPort +1);
 											chat = new Chat(username, friendname, connectionSocket, msgStatusSocket, 
-													listenList);
-											chat.setVisible(true);
+													listenList, true);
 										} catch (IOException e) {
-											
+										    JOptionPane.showMessageDialog(frame, "Não foi possível alcançar " + friendname, "Erro",
+										            JOptionPane.WARNING_MESSAGE);
 											e.printStackTrace();
 										}
 									}
@@ -350,11 +368,13 @@ public class Profile extends JFrame {
 							panel.add(btn);
 						}
 						panel.validate();
+						lblConectividadeComServidor.setForeground(Color.GREEN);
+						lblConectividadeComServidor.setText("Servidor OK");
 					} catch (ConnectException e) {
 						if (servNResponde < 5) {
 							servNResponde++;
 							lblConectividadeComServidor.setForeground(Color.YELLOW);
-							lblConectividadeComServidor.setText("Tentando contatar servidor");
+							lblConectividadeComServidor.setText(contatandoServStr);
 						} else {
 							String[] opcoes = {"Sim", "Não"};
 							int yesno = JOptionPane.showOptionDialog(frame, "Servidor aparentemente offline."
@@ -372,7 +392,7 @@ public class Profile extends JFrame {
 						if (servNResponde < 5) {
 							servNResponde++;
 							lblConectividadeComServidor.setForeground(Color.YELLOW);
-							lblConectividadeComServidor.setText("Tentando contatar servidor");
+							lblConectividadeComServidor.setText(contatandoServStr);
 						} else {
 							String[] opcoes = {"Sim", "Não"};
 							int yesno = JOptionPane.showOptionDialog(frame, "Servidor aparentemente offline."
@@ -443,12 +463,12 @@ public class Profile extends JFrame {
 //						servNResponde++;
 //						System.out.println("Servidor não respondeu, tentando reconectar...");
 //						lblConectividadeComServidor.setForeground(Color.YELLOW);
-//						lblConectividadeComServidor.setText("Tentando contatar servidor");
+//						lblConectividadeComServidor.setText(contatandoServStr);
 //					} catch (IOException e) {
 //						servNResponde++;
 //						System.out.println("Servidor não respondeu, tentando reconectar...");
 //						lblConectividadeComServidor.setForeground(Color.YELLOW);
-//						lblConectividadeComServidor.setText("Tentando contatar servidor");
+//						lblConectividadeComServidor.setText(contatandoServStr);
 //						e.printStackTrace();
 //					}
 //				}
@@ -504,8 +524,7 @@ public class Profile extends JFrame {
 					connectionSocket = listenList.get(0).accept();
 					String friendname = BufferMethods.readString(connectionSocket.getInputStream());
 					Socket msgStatusSocket = listenList.get(1).accept();
-					chat = new Chat(username, friendname, connectionSocket, msgStatusSocket, listenList);
-					chat.setVisible(true);
+					chat = new Chat(username, friendname, connectionSocket, msgStatusSocket, listenList, false);
 				} catch (SocketException e) {
 					if (connectionSocket != null) {
 						try {
