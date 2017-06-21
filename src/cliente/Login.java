@@ -7,7 +7,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
-import cliente.threads.RecieveMessages;
+import cliente.threads.ReceiveMessages;
 
 import javax.swing.JLabel;
 import java.awt.Font;
