@@ -2,6 +2,7 @@ package protocol;
 
 import utility.Strings.StringMethods;
 import utility.arrays.ArrayMethods;
+import utility.Exceptions.UnexistantFlagException;
 import java.util.Vector;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
@@ -22,7 +23,9 @@ public class PSender {
 	private PReceiver receiverSide;
 	private PipedInputStream dataIn;
 	private DataInputStream dis;
-	private int windowSize, lastAcked;
+	/*	windowSize nesta classe é o tamanho da janela do host no outro lado da Socket */
+	private int lastAcked;
+	private ByteBuffer byteBuffer;
 	private byte[] buf;
 	
 	/**
@@ -31,10 +34,10 @@ public class PSender {
 	 * @param bufferSize Tamanho do buffer para datagramas.
 	 */
 	public PSender(DatagramSocket datagramSocket, int bufferSize) {
+		byteBuffer = ByteBuffer.allocate(5000);
 		this.datagramSocket = datagramSocket;
 		dis = new DataInputStream(dataIn);
 		buf = new byte[bufferSize];
-		windowSize = 1;
 		lastAcked = -1;
 	}
 
@@ -49,17 +52,50 @@ public class PSender {
 
 	/**
 	 * Recebe mensagem e transforma em segmento.
-	 * @param data Mensagem(String) a ser encapsulada.
+	 * @param buf Array de bytes com dados a serem enviados
+	 * @param offset Início dos dados a serem copiados do array.
+	 * @param len Quantidade de bytes a serem copiados.
 	 * @return Datagrama pronto para envio.
 	 */
-	private DatagramPacket encapsulateDatagram(byte[] data, int len) {
-		byte array[] = new byte[len];
-		int lenRead = 0;
-		try {if (dis.available() > 0) lenRead = dis.read(array, 0, len);} catch (IOException ioe) {}
+	private DatagramPacket encapsulateDatagram(byte[] buf, int offset, int len) {
+		//A completar.
+	}
+	
+	/**
+	 * Cria header para mensagem com dados especificados.
+	 * @param seqnum Número de sequência do segmento.
+	 * @param acknum Número confirmado.
+	 * @param flagSettings byte de flags.
+	 * @return Mensagem com cabeçalhos (segmento) em forma de array de bytes.
+	 */
+	private byte[] makeHeader(int numberByteAmount, int seqnum, int acknum, int windowSize, byte flagSettings) {
+		return ArrayMethods.concatenateByteArrays(
+				ArrayMethods.concatenateByteArrays(
+						StringMethods.zeroPrefixTo(Integer.toString(seqnum), numberByteAmount).getBytes(),
+						StringMethods.zeroPrefixTo(Integer.toString(acknum), numberByteAmount).getBytes()),
+				ArrayMethods.concatenateByteArrays(
+						StringMethods.zeroPrefixTo(Integer.toString(windowSize), numberByteAmount).getBytes(),
+						flagSettings)
+				);
+	}
+	
+	private byte makeFlagByte(String[] flagSettings) throws UnexistantFlagException {
+		byte flags = 0;
+		for (int i = 0;i < flagSettings.length;i++) {
+			if (flagSettings[i].equals("ACK")) {
+				flags |= 1;
+			} else if (flagSettings[i].equals("SYN")) {
+				flags |= 1 << 1;
+			} else if (flagSettings[i].equals("SYNACK")) {
+				flags |= 1 << 2;
+			} else if (flagSettings[i].equals("FIN")) {
+				flags |= 1 << 3;
+			} else {
+				throw new UnexistantFlagException();
+			}
+		}
 		
-		int seqnum = receiverSide.getLastReceived();
-		
-		return new DatagramPacket(data, len);
+		return flags;
 	}
 	
 	/**

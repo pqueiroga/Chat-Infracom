@@ -14,8 +14,11 @@ public class StringMethods {
 	 */
 	public static String zeroPrefixTo(String number, int size) {
 		if (size > number.length()) {
-			String newString = (new String(new char[size - number.length()]).replace('\0', '0')) + number;
-			
+			String newString;
+			if (Integer.parseInt(number) >= 0)
+				newString = (new String(new char[size - number.length()]).replace('\0', '0')) + number;
+			else
+				newString = "-" + (new String(new char[size - (number.length() + 1)]).replace('\0', '0')) + number.substring(1);
 			return newString;
 		} else return number;
 	}

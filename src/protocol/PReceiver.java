@@ -19,7 +19,11 @@ public class PReceiver {
 	private DatagramPacket datagramPacket;
 	private PSender senderSide;
 	private PipedOutputStream dataOut;
-	private int lastReceived;
+	/*	theirWindowSize é o tamanho da janela do destinatário
+	 * ourWindowSize é o tamanho da janela deste lado
+	 * sentUnacked é o número de segmentos enviados que ainda não foram recebidos
+	 */
+	private int theirWindowSize, ourWindowSize, sentUnacked, lastReceived;
 	
 	/**
 	 * Cria parte receptora de datagramas de uma Socket.

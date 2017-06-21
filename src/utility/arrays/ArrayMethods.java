@@ -13,7 +13,7 @@ public class ArrayMethods {
 	 * Concatena dois arrays de bytes.
 	 * @param a Primeiro array.
 	 * @param b Segundo array.
-	 * @return arrays concatenados.
+	 * @return Arrays concatenados.
 	 */
 	public static byte[] concatenateByteArrays(byte[] a, byte[] b) {
 		byte[] ab = new byte[a.length + b.length];
@@ -25,13 +25,43 @@ public class ArrayMethods {
 	}
 	
 	/**
+	 * Adiciona byte ao fim de um array de bytes.
+	 * @param a Array de bytes.
+	 * @param b Byte a ser adicionado ao fim do array.
+	 * @return Array com novo byte ao fim.
+	 */
+	public static byte[] concatenateByteArrays(byte[] a, byte b) {
+		byte[] ab = new byte[a.length + 1];
+		
+		System.arraycopy(a, 0, ab, 0, a.length);
+		ab[ab.length - 1] = b;
+		
+		return ab;
+	}
+	
+	/**
+	 * Prefixa array de bytes com um byte especificado.
+	 * @param a Byte a ser adicionado à frente do array.
+	 * @param b Array a ser prefixado com byte.
+	 * @return Array com novo byte ao início.
+	 */
+	public static byte[] concatenateByteArrays(byte a, byte[] b) {
+		byte[] ab = new byte[b.length + 1];
+		
+		System.arraycopy(b, 0, ab, 1, b.length);
+		ab[0] = a;
+		
+		return ab;
+	}
+	
+	/**
 	 * Destaca subarray de um array de bytes fornecidos.
 	 * @param array Array de que se destacará subarray.
 	 * @param len Tamanho do subarray.
 	 * @param offset Ponto inicial do destaque do array.
 	 * @return Subarray do array especificado.
 	 */
-	public static byte[] byteArraySubset(byte[] array, int len, int offset) {
+	public static byte[] byteArraySubset(byte[] array, int offset, int len) {
 		byte[] newArray = new byte[len];
 		
 		System.arraycopy(array, offset, newArray, 0, len);
