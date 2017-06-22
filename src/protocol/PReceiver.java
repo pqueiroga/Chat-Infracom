@@ -23,7 +23,7 @@ public class PReceiver {
 	 * ourWindowSize é o tamanho da janela deste lado
 	 * sentUnacked é o número de segmentos enviados que ainda não foram recebidos
 	 */
-	private int theirWindowSize, ourWindowSize, sentUnacked, lastReceived;
+	private int theirWindowSize, ourWindowSize, lastReceived, lastAcked;
 	
 	/**
 	 * Cria parte receptora de datagramas de uma Socket.
@@ -33,6 +33,7 @@ public class PReceiver {
 	 */
 	public PReceiver(PipedInputStream dataReader, DatagramSocket datagramSocket, DatagramPacket datagramPacket) {
 		lastReceived = -1;
+		lastAcked = -1;
 		dataOut = null;
 		this.datagramPacket = datagramPacket;
 		this.datagramSocket = datagramSocket;
@@ -50,10 +51,34 @@ public class PReceiver {
 		senderSide = sender;
 	}
 	
+	/**
+	 * @return Último byte recebido.
+	 */
 	public int getLastReceived() {
 		return lastReceived;
 	}
 	
+	/**
+	 * @return Último byte ackeado.
+	 */
+	public int getLastAcked() {
+		return lastAcked;
+	}
+	
+	/**
+	 * @return Tamanho da janela deste lado da conexão.
+	 */
+	public int getOurWindowSize() {
+		return ourWindowSize;
+	}
+	
+	/**
+	 * @return Tamanho da janela do destinatário.
+	 */
+	public int getTheirWindowSize() {
+		return theirWindowSize;
+	}
+
 	/**
 	 * Recebe segmento e transorma em mensagem.
 	 * @param datagram Segmento a ser desencapsulado.

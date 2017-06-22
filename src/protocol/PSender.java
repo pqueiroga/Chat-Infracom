@@ -3,7 +3,8 @@ package protocol;
 import utility.Strings.StringMethods;
 import utility.arrays.ArrayMethods;
 import utility.Exceptions.UnexistantFlagException;
-import java.util.Vector;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
@@ -23,22 +24,56 @@ public class PSender {
 	private PReceiver receiverSide;
 	private PipedInputStream dataIn;
 	private DataInputStream dis;
-	/*	windowSize nesta classe é o tamanho da janela do host no outro lado da Socket */
-	private int lastAcked;
+	private int lastReadFromStream, lastSent, sentUnacked, byteBufferSeqnum;
 	private ByteBuffer byteBuffer;
 	private byte[] buf;
+	private boolean alive;
+	private TimerTask timerTask;
+	private Timer timer;
 	
+	/*
+	public void run() {
+		while (alive) {
+			int leftToRead = 0;
+			
+			try {leftToRead = dis.available();} catch (IOException ioe) {}
+
+			if ((leftToRead > 0) && (byteBuffer.remaining() > 0) &&) {
+				
+			}
+		}
+	}
+	*/
+
 	/**
 	 * Cria parte remetente de datagramas de uma Socket.
 	 * @param datagramSocket Socket de datagramas que enviará dados.
 	 * @param bufferSize Tamanho do buffer para datagramas.
 	 */
 	public PSender(DatagramSocket datagramSocket, int bufferSize) {
-		byteBuffer = ByteBuffer.allocate(5000);
+		byteBuffer = ByteBuffer.allocate(8*bufferSize);
 		this.datagramSocket = datagramSocket;
 		dis = new DataInputStream(dataIn);
 		buf = new byte[bufferSize];
-		lastAcked = -1;
+		lastReadFromStream = -1;
+		byteBufferSeqnum = 0;
+		sentUnacked = 0;
+		lastSent = -1;
+		alive = true;
+		timerTask = new TimerTask() { 
+			public void run() {
+				if (alive) {
+					int leftToRead = 0;
+					
+					try {leftToRead = dis.available();} catch (IOException ioe) {}
+					
+					if ((leftToRead > 0) && (byteBuffer.remaining() > 0) && (sentUnacked <= receiverSide.getTheirWindowSize())) {
+						dis.read()
+					}
+				}
+			}
+		};
+		timer = new Timer();
 	}
 
 	/**
@@ -46,19 +81,56 @@ public class PSender {
 	 * o método setReceiver configura essa referência para o PReceiver especificado.
 	 * @param receiver PReceiver a ser referenciado.
 	 */
-		public void setReceiver(PReceiver receiver) {
+	public void setReceiver(PReceiver receiver) {
 		receiverSide = receiver;
 	}
 
 	/**
-	 * Recebe mensagem e transforma em segmento.
+	 * Transforma mensagem em segmento.
 	 * @param buf Array de bytes com dados a serem enviados
 	 * @param offset Início dos dados a serem copiados do array.
 	 * @param len Quantidade de bytes a serem copiados.
 	 * @return Datagrama pronto para envio.
 	 */
 	private DatagramPacket encapsulateDatagram(byte[] buf, int offset, int len) {
-		//A completar.
+		String flags[] = {"ACK"};
+		
+		byte data[] = null;
+
+		try {
+			data =
+				ArrayMethods.concatenateByteArrays(
+						makeHeader(12, lastSent + 1, receiverSide.getLastReceived() + 1,
+								receiverSide.getOurWindowSize(), makeFlagByte(flags)),
+						ArrayMethods.byteArraySubset(buf, offset, len));
+		} catch (UnexistantFlagException ufe) {}
+		
+		return new DatagramPacket(data, 0, data.length,
+				datagramSocket.getInetAddress(), datagramSocket.getLocalPort());
+	}
+
+	/**
+	 * Transforma mensagem em segmento.
+	 * @param buf ByteBuffer que guarda as informações a serem encapsuladas.
+	 * @param len Quanta informação do ByteBuffer encapsular.
+	 * @return DatagramPacket com informações encapsuladas.
+	 */
+	private DatagramPacket encapsulateDatagram(ByteBuffer buf, int len) {
+		int realLen = (buf.remaining() > len) ? len : buf.remaining();
+
+		byte data[] = null, tempByteBuf[] = new byte[realLen];
+
+		int seqnum = receiverSide.getLastAcked() + buf.position();
+		
+		buf.get(tempByteBuf);
+
+		data =
+				ArrayMethods.concatenateByteArrays(
+						makeHeader(12, seqnum, 0, receiverSide.getOurWindowSize(), (byte) 0), 
+						tempByteBuf);
+		
+		return new DatagramPacket(data, 0, data.length, datagramSocket.getInetAddress(),
+				datagramSocket.getLocalPort());
 	}
 	
 	/**
@@ -79,6 +151,12 @@ public class PSender {
 				);
 	}
 	
+	/**
+	 * Cria byte que representa flags setadas do cabeçalho.
+	 * @param flagSettings Array de Strings, cada uma deve conter o nome da flag a ser setada.
+	 * @return byte representante das flags setadas do cabeçalho.
+	 * @throws UnexistantFlagException Caso uma flag especificada em flagSettings não exista.
+	 */
 	private byte makeFlagByte(String[] flagSettings) throws UnexistantFlagException {
 		byte flags = 0;
 		for (int i = 0;i < flagSettings.length;i++) {
@@ -97,21 +175,6 @@ public class PSender {
 		
 		return flags;
 	}
-	
-	/**
-	 * Envia segmentos ao destinatário. 
-	 */
-	public void sendData() {
-
-	}
-	
-	/**
-	 * Atualiza número do último segmento recebido pelo destinatário.
-	 * @param ackedNum Número do último segmento recebido pelo destinatário.
-	 */
-	public void updatePacketBuffer(int ackedNum) {
-		lastAcked = ackedNum;
-	}
 
 	/**
 	 * Para conexão com PipedOutputStream da Thread escritora.
@@ -119,5 +182,16 @@ public class PSender {
 	 */
 	public PipedInputStream getPipedInputStream() {
 		return dataIn;
+	}
+	
+	/**
+	 * Para execução da thread
+	 */
+	public void kill() {
+		alive = false;
+	}
+	
+	public void updateAckedNumber() {
+		sentUnacked += -1;
 	}
 }
