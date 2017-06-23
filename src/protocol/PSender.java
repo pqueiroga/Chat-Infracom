@@ -26,7 +26,7 @@ public class PSender {
 	private PReceiver receiverSide;
 	private PipedInputStream dataIn;
 	private DataInputStream dis;
-	private int lastReadFromStream, lastSent, sentUnacked;
+	private int lastReadFromStream, lastSent, sentUnacked, lastAcked;
 	private long packetTimeout;
 	private byte[] buf;
 	private boolean alive, inWriteMode;
@@ -67,6 +67,9 @@ public class PSender {
 						timerTasks.add(sendData(encapsulateDatagram(buf, 0, lenRead), lastSent + lenRead));
 						
 						lastSent += lenRead;
+						lastAcked = receiverSide.getLastReceived();
+					} else if (lastAcked < receiverSide.getLastAcked()) {
+						try {datagramSocket.send(encapsulateDatagram(new byte[0], 0, 0));} catch (IOException ioe) {}
 					}
 				} else {
 					try {
@@ -98,7 +101,12 @@ public class PSender {
 	 * @return Datagrama pronto para envio.
 	 */
 	private DatagramPacket encapsulateDatagram(byte[] buf, int offset, int len) {
-		String flags[] = {"ACK"};
+		String flagsAck[] = {"ACK"};
+		String noFlags[]= {};
+		String flags[];
+		
+		if (lastAcked < receiverSide.getLastAcked()) flags = flagsAck;
+		else flags = noFlags;
 		
 		byte data[] = null;
 
@@ -221,7 +229,36 @@ public class PSender {
 		alive = false;
 	}
 	
+	/**
+	 * Atualiza o registro do número de pacotes enviados sem que ainda tenham recebido um ACK, além
+	 * de remover um pacote da lista de retransmissão rápida.
+	 */
 	public void updateAckedNumber() {
 		sentUnacked += -1;
+		timerTasks.pop();
+	}
+	
+	/**
+	 * Rapidamente reenvia pacotes ao destinatário.
+	 */
+	public void requestFastRetransmit() {
+		sentUnacked = 0;
+		
+		int a = timerTasks.size(), b = receiverSide.getTheirWindowSize();
+		
+		a = (a < b) ? a : b;
+		
+		for (int i = 0;i < a;i++) {
+			timerTasks.get(i).cancel();
+			timer.schedule(timerTasks.get(i), 0, packetTimeout);
+		}
+	}
+	
+	/**
+	 * Configura novo timeout para pacotes.
+	 * @param newTimeout Novo tempo para timeout de pacotes.
+	 */
+	public void updateTimeout(long newTimeout) {
+		packetTimeout = newTimeout;
 	}
 }

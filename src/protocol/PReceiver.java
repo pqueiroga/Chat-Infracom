@@ -1,9 +1,11 @@
 package protocol;
 
+import java.time.LocalTime;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.io.PipedOutputStream;
 import java.io.PipedInputStream;
+import java.util.Vector;
 import java.io.IOException;
 
 /**
@@ -12,17 +14,12 @@ import java.io.IOException;
  * */
 
 public class PReceiver {
-	/*	time de timeout
-	 * 	DatagramSocket para receber datagramas
-	 * 	PipedOutputStream para enviar dados Ã  aplicaÃ§Ã£o */
 	private DatagramSocket datagramSocket;
 	private DatagramPacket datagramPacket;
 	private PSender senderSide;
 	private PipedOutputStream dataOut;
-	/*	theirWindowSize é o tamanho da janela do destinatário
-	 * ourWindowSize é o tamanho da janela deste lado
-	 * sentUnacked é o número de segmentos enviados que ainda não foram recebidos
-	 */
+	private Vector<LocalTime> sentTimes;
+	private Vector<Integer> expectedAcks;
 	private int theirWindowSize, ourWindowSize, lastReceived, lastAcked, threshold;
 	
 	/**
@@ -83,6 +80,20 @@ public class PReceiver {
 	}
 	
 	/**
+	 * Adiciona momento de envio de um pacote pelo lado remetente da aplicação para cálculo de RTT.
+	 * @param time Momento do envio de pacote.
+	 */
+	public void addSentTime(LocalTime time, int expectedAcknum) {
+		sentTimes.add(time);
+		expectedAcks.add(expectedAcknum);
+	}
+	
+	public void estimateNewRTT(int acknum) {
+		int position = expectedAcks.indexOf(acknum);
+		LocalTime temp = sentTimes.elementAt(position);
+	}
+
+	/**
 	 * @return Tamanho da janela do destinatário.
 	 */
 	public int getTheirWindowSize() {
@@ -100,7 +111,6 @@ public class PReceiver {
 		return message;
 	}
 	
-	/*	Mï¿½todo para julgar datagrama e decidir como proceder */
 	/**
 	 * Mï¿½todo para julgar segmentos e decidir como proceder.
 	 * @param toJudge Segmento a ser julgado.
