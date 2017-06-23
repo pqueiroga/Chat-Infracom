@@ -3,6 +3,7 @@ package protocol;
 import utility.Strings.StringMethods;
 import utility.arrays.ArrayMethods;
 import utility.Exceptions.UnexistantFlagException;
+import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.net.DatagramSocket;
@@ -21,45 +22,36 @@ import java.io.PipedOutputStream;
 public class PSender {
 	private DatagramSocket datagramSocket;
 	private DatagramPacket datagramPacket;
+	private LinkedList<TimerTask> timerTasks;
 	private PReceiver receiverSide;
 	private PipedInputStream dataIn;
 	private DataInputStream dis;
-	private int lastReadFromStream, lastSent, sentUnacked, byteBufferSeqnum;
-	private ByteBuffer byteBuffer;
+	private int lastReadFromStream, lastSent, sentUnacked;
+	private long packetTimeout;
 	private byte[] buf;
-	private boolean alive;
+	private boolean alive, inWriteMode;
 	private TimerTask timerTask;
 	private Timer timer;
 	
-	/*
-	public void run() {
-		while (alive) {
-			int leftToRead = 0;
-			
-			try {leftToRead = dis.available();} catch (IOException ioe) {}
-
-			if ((leftToRead > 0) && (byteBuffer.remaining() > 0) &&) {
-				
-			}
-		}
-	}
-	*/
-
 	/**
 	 * Cria parte remetente de datagramas de uma Socket.
 	 * @param datagramSocket Socket de datagramas que enviará dados.
 	 * @param bufferSize Tamanho do buffer para datagramas.
 	 */
-	public PSender(DatagramSocket datagramSocket, int bufferSize) {
-		byteBuffer = ByteBuffer.allocate(8*bufferSize);
+	public PSender(DatagramSocket datagramSocket, int bufferSize, long packetTimeout) {
 		this.datagramSocket = datagramSocket;
+		dataIn = new PipedInputStream();
 		dis = new DataInputStream(dataIn);
 		buf = new byte[bufferSize];
 		lastReadFromStream = -1;
-		byteBufferSeqnum = 0;
 		sentUnacked = 0;
 		lastSent = -1;
+		this.packetTimeout = packetTimeout;
+		inWriteMode = true;
 		alive = true;
+		timer = new Timer();
+		timerTasks = new LinkedList<TimerTask>();
+
 		timerTask = new TimerTask() { 
 			public void run() {
 				if (alive) {
@@ -67,13 +59,26 @@ public class PSender {
 					
 					try {leftToRead = dis.available();} catch (IOException ioe) {}
 					
-					if ((leftToRead > 0) && (byteBuffer.remaining() > 0) && (sentUnacked <= receiverSide.getTheirWindowSize())) {
-						dis.read()
+					if ((leftToRead > 0) && (sentUnacked < receiverSide.getTheirWindowSize())) {
+						int lenRead = 0;
+						
+						try {lenRead = dis.read(buf);} catch (IOException ioe) {}
+						
+						timerTasks.add(sendData(encapsulateDatagram(buf, 0, lenRead), lastSent + lenRead));
+						
+						lastSent += lenRead;
+					}
+				} else {
+					try {
+						dataIn.close();
+						dis.close();
+					} catch (IOException ioe) {}
+					finally {
+						timer.cancel();
 					}
 				}
 			}
 		};
-		timer = new Timer();
 	}
 
 	/**
@@ -174,6 +179,31 @@ public class PSender {
 		}
 		
 		return flags;
+	}
+	
+	/**
+	 * Envia dados a destinatário.
+	 * @param toSend DatagramPacket a ser enviado.
+	 * @param lastByte Último byte da mensagem enviada por este segmento.
+	 */
+	private TimerTask sendData(DatagramPacket toSend, int lastByte) {
+		try {datagramSocket.send(toSend);} catch (IOException ioe) {}
+		
+		TimerTask task = new TimerTask() {
+			public void run() {
+				if (receiverSide.getLastAcked() <= lastByte) {
+					reSendData(toSend);
+				} else this.cancel();
+			}
+		};
+		
+		timer.schedule(task, packetTimeout, packetTimeout);
+		
+		return task;
+	}
+	
+	private void reSendData(DatagramPacket toSend) {
+		try {datagramSocket.send(toSend);} catch (IOException ioe) {}
 	}
 
 	/**

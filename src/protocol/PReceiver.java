@@ -23,7 +23,7 @@ public class PReceiver {
 	 * ourWindowSize é o tamanho da janela deste lado
 	 * sentUnacked é o número de segmentos enviados que ainda não foram recebidos
 	 */
-	private int theirWindowSize, ourWindowSize, lastReceived, lastAcked;
+	private int theirWindowSize, ourWindowSize, lastReceived, lastAcked, threshold;
 	
 	/**
 	 * Cria parte receptora de datagramas de uma Socket.
@@ -34,6 +34,8 @@ public class PReceiver {
 	public PReceiver(PipedInputStream dataReader, DatagramSocket datagramSocket, DatagramPacket datagramPacket) {
 		lastReceived = -1;
 		lastAcked = -1;
+		ourWindowSize = 1;
+		threshold = 6;
 		dataOut = null;
 		this.datagramPacket = datagramPacket;
 		this.datagramSocket = datagramSocket;
@@ -70,6 +72,14 @@ public class PReceiver {
 	 */
 	public int getOurWindowSize() {
 		return ourWindowSize;
+	}
+	
+	/**
+	 * Seta tamanho da janela de congestionamento.
+	 * @param newSize
+	 */
+	public void setOurWindowSize(int newSize) {
+		ourWindowSize = newSize;
 	}
 	
 	/**
