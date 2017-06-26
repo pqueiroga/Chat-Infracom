@@ -17,7 +17,9 @@ public class Remetente {
 	
 	private String ESTADO;
 	
-	private short RcvBuffer = 200;
+	private short RcvBuffer = 2;
+	private short RcvBufferSize = 200;
+	private int headerLength = 14;
 	
 	private int remotePort;
 	private InetAddress remoteInetAddress;
@@ -25,12 +27,12 @@ public class Remetente {
 	private int nextSeqNum; // nextSeqNum - 1 nos diz LastPacketSent
 	private int sendBase; // sendBase - 1 nos diz LastPacketAcked
 	private int sendWindowSize;
-	private short rcvwnd;
-	private DatagramPacket[] testeSendBuffer = new DatagramPacket[100];
-	private byte[] testeSendBufferEstado = new byte[RcvBuffer]; // 1 n enviado, 2 enviado, 3 reconhecido
-	private int[] acksDuplicados = new int[RcvBuffer];
-	private DatagramPacket[] testeRcvBuffer = new DatagramPacket[RcvBuffer];
-	private int[] testeRcvBufferEstado = new int[RcvBuffer]; // 1 recebido, 2 ack enviado, 3 dado pra camada superior
+	private int rcvwnd;
+	private DatagramPacket[] testeSendBuffer = new DatagramPacket[RcvBufferSize];
+	private byte[] testeSendBufferEstado = new byte[RcvBufferSize]; // 1 n enviado, 2 enviado, 3 reconhecido
+	private int[] acksDuplicados = new int[RcvBufferSize];
+	private DatagramPacket[] testeRcvBuffer = new DatagramPacket[RcvBufferSize];
+	private int[] testeRcvBufferEstado = new int[RcvBufferSize]; // 1 recebido, 2 ack enviado, 3 dado pra camada superior
 	
 	/**
 	 * rcvBase nos diz onde está o pacote válido para ser pego.
@@ -41,7 +43,7 @@ public class Remetente {
 	private int rcvLastAcked;
 	private DatagramSocket socket;
 	private int pktTimer, ackTimer; // diz qual pacote/ack está associado ao timer
-	private boolean close = false, msgTimerOn = false, ackTimerOn = false;
+	private boolean close = false, msgTimerOn = false, ackTimerOn = false, ackMeTimerOn = false;
 	private long timeOutInterval = 1000;
 	private long timeOutRTT = 1000;
 	private long timeSent, timeAcked, sampleRTT, estimatedRTT = 0, devRTT;
@@ -49,6 +51,7 @@ public class Remetente {
 	
 	private Timer msgSentTimer = new Timer();
 	private Timer delayedAckTimer = new Timer();
+	private Timer ackMeTimer = new Timer();
 	
 	private Thread tEnvia, tRecebe;
 	
@@ -67,7 +70,7 @@ public class Remetente {
 		this.ESTADO = ESTADO;
 		byte[] data = new byte[1024];
 		this.nextSeqNum = this.sendBase = this.rcvBase = this.rcvLastAcked = 0; //new Random().nextInt(Integer.MAX_VALUE - 1);
-		this.rcvwnd = RcvBuffer;
+		this.rcvwnd = this.sendWindowSize = RcvBuffer;
 		switch (this.ESTADO) {
 		case "CLOSED":
 			if (port == -1) {
@@ -77,47 +80,21 @@ public class Remetente {
 			}
 			this.remotePort = remotePort;
 			this.remoteInetAddress = InetAddress.getByName(remoteIP);
-	//		byte[] data = new byte[13];
-	//		cabecalha(data, this.nextSeqNum, this.ackNum, this.rcvwnd, (byte) 0, (byte) 1, (byte) 0);
+
 			tRecebe = new Thread(new RecebeDados());
 			tEnvia = new Thread(new EnviaDados());
 			tEnvia.start();
 			tRecebe.start();
 			// ACTIVE OPEN
-			send(null, 0, (byte) 0, (byte) 1, (byte) 0); 
+			send(null, 0, (byte) 0, (byte) 1, (byte) 0, (byte) 0); 
 			// SYN SENT
 			this.ESTADO = "SYN SENT";
-	//		DatagramPacket iniciador = new DatagramPacket(data, 13, InetAddress.getByName(remoteIP), remotePort);
-	//		this.socket.send(iniciador);
-	//		this.nextSeqNum++;
-	//		this.socket.receive(iniciador);
 			
-	//		do {
 			// recebe syn + ack
 			System.out.println("Vou receber syn + ack");
 				receive(data, 1024);
 			System.out.println("Logo depois de receber syn + ack no construtor");
-				
-				// manda ack
-//				send(null, 0, (byte) 1, (byte) 0, (byte) 0);
-				// ESTABLISHED
-//				this.ESTADO = "ESTABLISHED";
-	//		} while (!(getAck(data) || getSyn(data)));
-				
-	//		byte[] synack = iniciador.getData();
-	//		this.sendBase = getackNum(synack);
-	//		this.remoteInetAddress = iniciador.getAddress();
-	//		this.remotePort = iniciador.getPort();
-	//		this.socket.connect(this.remoteInetAddress, this.remotePort);
-	//		this.ackNum = getnextSeqNum(data) + 1;
-	//		cabecalha(data, this.nextSeqNum, this.ackNum, this.rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-	//		iniciador = new DatagramPacket(data, 13, this.remoteInetAddress, this.remotePort);
-	//		this.socket.send(iniciador);
-	//		tRecebe = new Thread(new RecebeDados());
-	//		tEnvia = new Thread(new EnviaDados());
-	//		tEnvia.start();
-	//		tRecebe.start();
-				break;
+			break;
 		case "SYN RECEIVED":
 			this.ackNum = ackNum;
 			this.rcvBase++;
@@ -128,33 +105,27 @@ public class Remetente {
 			tEnvia = new Thread(new EnviaDados());
 			tEnvia.start();
 			tRecebe.start();
-			send(null, 0, (byte) 1, (byte) 1, (byte) 0); // manda syn + ack
+			send(null, 0, (byte) 1, (byte) 1, (byte) 0, (byte) 0); // manda syn + ack
 			this.socket.connect(this.remoteInetAddress, this.remotePort);
-//			receive(data, 1024); // espera receber ACK
-//			this.ESTADO = "ESTABLISHED";
 		}
 	}
 	
-	public void send(byte[] data, int length, byte ack, byte syn, byte fin) throws IOException {
+	public void send(byte[] data, int length, byte ack, byte syn, byte fin, byte ackMe) throws IOException {
 		System.out.println("Tentarei ganhar lock de testeSendBuffer no send");
 		synchronized (this.testeSendBuffer) {
 			System.out.println("Ganhei lock de testeSendBuffer no send");
-//			for (int i = this.sendBase, j = 0; i < this.sendBase + length; i++, j++) {
-//				this.sendBuffer[i] = data[j];
-//			}
-//			this.nextSeqNum += length;
-//			this.sendBuffer.notify();
-//			this.dgLength[p] = length;
-//			p = p + 1;
-			byte[] guardar = new byte[13 + length];
-			rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-			cabecalha(guardar, nextSeqNum, ackNum, rcvwnd, ack, syn, fin);
-			for (int i = 13, j = 0; i < 13 + length && j < data.length; i++, j++) {
+			byte[] guardar = new byte[headerLength + length];
+			rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+			System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+					+ " - (" + rcvBase + " - 1)))");
+			cabecalha(guardar, nextSeqNum, ackNum, rcvwnd, ack, syn, fin, ackMe);
+			for (int i = headerLength, j = 0; i < headerLength + length && j < data.length; i++, j++) {
 				guardar[i] = data[j];
 			}
-			testeSendBuffer[this.nextSeqNum] = new DatagramPacket(guardar, guardar.length,
+			testeSendBuffer[(this.nextSeqNum)] = new DatagramPacket(guardar, guardar.length,
 					this.remoteInetAddress, this.remotePort);
-			this.testeSendBufferEstado[this.nextSeqNum] = 1;
+			this.testeSendBufferEstado[(this.nextSeqNum)] = 1;
+
 			this.nextSeqNum++;
 			System.out.println("Coloquei o pacote " + (this.nextSeqNum - 1) + " no sendBuffer pra ser enviado");
 			testeSendBuffer.notify();
@@ -163,12 +134,36 @@ public class Remetente {
 	}
 	
 	public void send(byte[] data, int length) throws IOException {
-		send(data, length, (byte) 1, (byte) 0, (byte) 0);
+		send(data, length, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
 	}
 	
 	public int receive(byte[] data, int length) {
 		int b = 0;
 		System.out.println("Tentarei ganhar lock no testeRcvBuffer em receive");
+//		synchronized (testeRcvBuffer) {
+//			System.out.println("Ganhei lock no testeRcvBuffer em receive");
+//			while (rcvBase == ackNum) {
+//				// pois não tem nenhum pacote ainda
+//				try {
+//					System.out.println("Estarei esperando por rcvBase != ackNum em receive");
+//					testeRcvBuffer.wait();
+//					System.out.println("Acabou a espera do testeRcvBuffer em receive");
+//				} catch (InterruptedException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
+//			}
+//			System.out.println("Vou tentar dar o pacote " + rcvBase + " para a aplicação");
+//			byte[] temp = testeRcvBuffer[rcvBase].getData();
+//			for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[rcvBase].getLength(); i++, j++) {
+//				data[i] =  temp[j];
+//				b++;
+//			}
+//			System.out.println("Mandei pra aplicação o pacote " + rcvBase);
+////			testeRcvBufferEstado[rcvBase] = 3;
+//			rcvBase += 1;
+//		}
+		
 		synchronized (testeRcvBuffer) {
 			System.out.println("Ganhei lock no testeRcvBuffer em receive");
 			while (rcvBase == ackNum) {
@@ -182,16 +177,17 @@ public class Remetente {
 					e.printStackTrace();
 				}
 			}
-			System.out.println("Vou tentar dar o pacote " + rcvBase + " para a aplicação");
-			byte[] temp = testeRcvBuffer[rcvBase].getData();
-			for (int i = 0, j = 13; i < length && j < testeRcvBuffer[rcvBase].getLength(); i++, j++) {
-				data[i] =  temp[j];
-				b++;
-			}
-			System.out.println("Mandei pra aplicação o pacote " + rcvBase);
-//			testeRcvBufferEstado[rcvBase] = 3;
-			rcvBase += 1;
 		}
+		System.out.println("Vou tentar dar o pacote " + rcvBase + " para a aplicação");
+		byte[] temp = testeRcvBuffer[(rcvBase)].getData();
+		for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[(rcvBase)].getLength(); i++, j++) {
+			data[i] =  temp[j];
+			b++;
+		}
+		System.out.println("Mandei pra aplicação o pacote " + rcvBase);
+//			testeRcvBufferEstado[rcvBase] = 3;
+		rcvBase += 1;
+		
 		return b;
 	}
 	
@@ -211,36 +207,44 @@ public class Remetente {
 
 	}
 	
-	public boolean podeEnviar() {
-		for (int i = sendBase; i < nextSeqNum && i < testeSendBufferEstado.length; i++) {
-			if (testeSendBufferEstado[i] == 1) {
+	public String getEstado() {
+		return this.ESTADO;
+	}
+	
+//	private int circulariza(int index) {
+//		return (index % RcvBufferSize + RcvBufferSize) % RcvBufferSize;
+//	}
+	
+	private boolean podeEnviar() {
+		for (int i = sendBase; i < sendBase + sendWindowSize && i < nextSeqNum; i++) {//i < nextSeqNum && i < testeSendBufferEstado.length; i++) {
+			if (testeSendBufferEstado[(i)] == 1) {
 				return true;
 			}
 		}
 		return false;
 	}
 	
-	public int transmitidoNaoReconhecido(int end) {
-		for (int i = sendBase; i < nextSeqNum && i < end && i < testeSendBufferEstado.length; i++) {
-			if (testeSendBufferEstado[i] == 2) {
+	private int transmitidoNaoReconhecido(int end) {
+		for (int i = sendBase; i < sendBase + sendWindowSize && i < nextSeqNum && i < end && i < testeSendBufferEstado.length; i++) {
+			if (testeSendBufferEstado[(i)] == 2) {
 				return i;
 			}
 		}
 		return -1;
 	}
 	
-	public int recebidoNaoReconhecido(int end) {
+	private int recebidoNaoReconhecido(int end) {
 		for (int i = rcvLastAcked; i < end && i < testeRcvBufferEstado.length; i++) {
-			if (testeRcvBufferEstado[i] == 1) {
+			if (testeRcvBufferEstado[(i)] == 1) {
 				return i;
 			}
 		}
 		return -1;
 	}
 	
-	public int descobreProximoEsperado() {
+	private int descobreProximoEsperado() {
 		for (int i = ackNum; i < testeRcvBufferEstado.length; i++) {
-			if (testeRcvBufferEstado[i] == 0) {
+			if (testeRcvBufferEstado[(i)] == 0) {
 				return i;
 			}
 		}
@@ -258,13 +262,30 @@ public class Remetente {
 	
 	class EnviaDados implements Runnable {
 		public void run() {
-			boolean enviou = false;
 			while (!close) {
 				synchronized (testeSendBuffer) {
-					while (!podeEnviar()) { //nextSeqNum == sendBase) {
-						enviou = false;
+					while (!podeEnviar()) {
 						try {
 							System.out.println("Estou esperando no testeSendBuffer pra enviar dados");
+							if (sendWindowSize == 0) {
+								synchronized (ackMeTimer) {
+									if (ackMeTimerOn) {
+										try {
+											ackMeTimer.cancel();
+											ackMeTimer = new Timer();
+										} catch (IllegalStateException e) {
+											ackMeTimer = new Timer();
+										}
+									}
+									ackMeTimerOn = true;
+									try {
+										ackMeTimer.schedule(new AckMePls(), timeOutRTT);
+									} catch (IllegalStateException e) {
+										ackMeTimer = new Timer();
+										ackMeTimer.schedule(new AckMePls(), timeOutRTT);
+									}
+								}
+							}
 							testeSendBuffer.wait();
 							System.out.println("Saí da espera no testeSendBuffer");
 						} catch (InterruptedException e) {
@@ -273,32 +294,68 @@ public class Remetente {
 						}
 					}
 					// se chegou aqui quer dizer que tem coisa no sendBuffer para enviar
-					System.out.println("Saí da espera no testeSendBuffer de verdade e enviarei dados");
+					System.out.println("Saí da espera no testeSendBuffer de verdade com janela receptora do dest (" +
+					 sendWindowSize + ") e enviarei dados");
 					try {
-//						byte[] data = new byte[nextSeqNum - sendBase + 13];
-//						cabecalha(data, nextSeqNum, ackNum,
-//								rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-//						for (int i = sendBase, j = 13; i < nextSeqNum; i++, j++) {
-//							data[j] = sendBuffer[i];
-//						}
-//						DatagramPacket dp = new DatagramPacket(data, data.length,
-//								remoteInetAddress, remotePort);
-//						System.out.println("vai lá");
-						for (int i = sendBase; i < nextSeqNum; i++) {
-							if (i - (sendBase - 1) > rcvwnd) break; // lastByteSent - lastByteAcked
-							if (testeSendBufferEstado[i] == 1) {
-//								for (int j = 0; j < testeSendBuffer[i].getData().length;j++) {
-//									System.out.print(testeSendBuffer[i].getData()[j] + ", ");
-//								}
+						for (int i = sendBase; i < nextSeqNum && i < sendBase + sendWindowSize; i++) {//i < nextSeqNum; i++) {
+							if (testeSendBufferEstado[(i)] == 1) {
+								System.out.println("Janela receptora do destinatário (" + sendWindowSize +")");
+								System.out.println("Pacotes no ar: " + (i - 1 - (sendBase - 1)));
+								while (i - (sendBase - 1) > sendWindowSize) { // lastByteSent - lastByteAcked
+									System.out.println("Pacotes no ar: " + (i - 1 - (sendBase - 1)));
+									try {
+										System.out.println("Vou esperar a janela receptora do destinatário (" + sendWindowSize + ")"
+												+ " liberar espaço.");
+										if (sendWindowSize == 0) {
+											synchronized (ackMeTimer) {
+												if (ackMeTimerOn) {
+													try {
+														ackMeTimer.cancel();
+														ackMeTimer = new Timer();
+													} catch (IllegalStateException e) {
+														ackMeTimer = new Timer();
+													}
+												}
+												ackMeTimerOn = true;
+												try {
+													ackMeTimer.schedule(new AckMePls(), timeOutRTT);
+												} catch (IllegalStateException e) {
+													ackMeTimer = new Timer();
+													ackMeTimer.schedule(new AckMePls(), timeOutRTT);
+												}
+											}
+										}
+										testeSendBuffer.wait();
+									} catch (InterruptedException e) {
+										// TODO Auto-generated catch block
+										e.printStackTrace();
+									}
+								}
+								synchronized (ackMeTimer) {
+									if (ackMeTimerOn) {
+										ackMeTimer.cancel();
+										ackMeTimer = new Timer();
+										ackMeTimerOn = false;
+									}
+								}
 								System.out.println("Enviei o pacote " + i);
-								socket.send(testeSendBuffer[i]);
-								enviou = true;
+								socket.send(testeSendBuffer[(i)]);
+								
+								synchronized (msgSentTimer) {
+									if (!msgTimerOn) {// && enviou) {
+										pktTimer = sendBase;
+										timeOutInterval = timeOutRTT;
+										msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+										msgTimerOn = true;
+									}
+								}
+								
 								if (sampleRTT != -1) {
 									timeSent = System.currentTimeMillis();
 									sampleRTT = -1;
 									packetSample = i;
 								}
-								testeSendBufferEstado[i] = 2;
+								testeSendBufferEstado[(i)] = 2;
 								synchronized (delayedAckTimer) {
 									if (ackTimerOn) {
 										if (ackTimer <= ackNum) {
@@ -310,17 +367,38 @@ public class Remetente {
 								}
 							}
 						}
-						synchronized (msgSentTimer) {
-							if (!msgTimerOn && enviou) {
-								pktTimer = sendBase;
-								timeOutInterval = timeOutRTT;
-								msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
-								msgTimerOn = true;
-							}
-						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
+				}
+			}
+		}
+	}
+	
+	class AckMePls extends TimerTask {
+		public void run() {
+			synchronized (ackMeTimer) {
+				try {
+					System.out.println("Enviando ackMe pois sendWindowSize == " + sendWindowSize);
+					ackMeTimer.cancel();
+					ackMeTimer = new Timer();
+					byte[] data = new byte[headerLength];
+					rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+							+ " - (" + rcvBase + " - 1)))");
+					
+					cabecalha(data, nextSeqNum, ackNum, rcvwnd, (byte) 0, (byte) 0, (byte) 0, (byte) 1);
+					DatagramPacket dp = new DatagramPacket(data, headerLength, remoteInetAddress, remotePort);
+					socket.send(dp);
+					try {
+						ackMeTimer.schedule(new AckMePls(), timeOutRTT);
+					} catch (IllegalStateException e) {
+						ackMeTimer = new Timer();
+						ackMeTimer.schedule(new AckMePls(), timeOutRTT);
+					}
+				} catch (IOException e) {
+					// TODO
+					e.printStackTrace();
 				}
 			}
 		}
@@ -333,16 +411,23 @@ public class Remetente {
 				try {
 					msgSentTimer.cancel();
 					msgSentTimer = new Timer();
-					byte[] newData = testeSendBuffer[pktTimer].getData();
-					rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+					byte[] newData = testeSendBuffer[(pktTimer)].getData();
+					rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+							+ " - (" + rcvBase + " - 1)))");
 					setRcvwnd(newData, rcvwnd);
-					testeSendBuffer[pktTimer] = new DatagramPacket(newData, testeSendBuffer[pktTimer].getLength(),
-							testeSendBuffer[pktTimer].getAddress(), testeSendBuffer[pktTimer].getPort());
-					socket.send(testeSendBuffer[pktTimer]);
+					testeSendBuffer[(pktTimer)] = new DatagramPacket(newData, testeSendBuffer[(pktTimer)].getLength(),
+							testeSendBuffer[(pktTimer)].getAddress(), testeSendBuffer[(pktTimer)].getPort());
+					socket.send(testeSendBuffer[(pktTimer)]);
 					if (timeOutInterval < 10000) { // duplicação do tempo de expiração
 						timeOutInterval = timeOutInterval << 1;
 					}
-					msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+					try {
+						msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+					} catch (IllegalStateException e) {
+						msgSentTimer = new Timer();
+						msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+					}
 				} catch (IOException e) {
 					// TODO rip
 					e.printStackTrace();
@@ -359,13 +444,15 @@ public class Remetente {
 					delayedAckTimer.cancel();
 					ackTimerOn = false;
 					delayedAckTimer = new Timer();
-					byte[] ack = new byte[13];
-					rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-					cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-					DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
+					byte[] ack = new byte[headerLength];
+					rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+							+ " - (" + rcvBase + " - 1)))");
+					cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+					DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 					// esperou 500 ms pela chegada de outro pacote na ordem, que deveria cancelar.
 					// se não foi cancelado ou seja, entrou aqui, então envia o ACK mesmo.
-					testeRcvBufferEstado[ackTimer] = 2;
+					testeRcvBufferEstado[(ackTimer)] = 2;
 					if (ackTimer > rcvLastAcked) {
 						rcvLastAcked = ackTimer;
 					}
@@ -385,18 +472,42 @@ public class Remetente {
 				try {
 					byte[] data = new byte[1024];
 					DatagramPacket dp = new DatagramPacket(data, data.length);
+					System.out.println("Vou esperar por um datagrama no RecebeDados");
 					socket.receive(dp);
-//					if (random.nextBoolean()) { // simula perda de pacotes
-//						continue;
-//					}
+					System.out.println("Recebi um datagrama no RecebeDados");
+					System.out.println("SeqNum: " + getSeqNum(data) +
+							"\nackNum: " + getackNum(data) +
+							"\nrcvwnd: " + getRcvwnd(data));
 					
 					if (random.nextDouble() < pDescartaPacote) { // simula perda de pacotes
+						System.out.println("Perdi o datagram ehehe");
+						continue;
+					}
+					
+					System.out.println("Rcvwnd que tem no pacote " + getRcvwnd(data));
+					sendWindowSize = getRcvwnd(data); // testando se isso melhora o paralelismo
+					
+					if (getAckMe(data) && !getAck(data)) { 
+						// aqui é para o caso do host remetente estar vendo
+						// um sendWindowSize 0 e ficar mandando pacotes pra mim só para receber
+						// o ack de volta e ser atualizado sobre o sendWindowSize.
+						byte[] ack = new byte[headerLength];
+						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+						System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+								+ " - (" + rcvBase + " - 1)))");
+						// envia de volta o ack-ackMe
+						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 1);
+						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
+						// envio imediato de um ACK
+						socket.send(ACK);
+						timeOutInterval = timeOutRTT;
 						continue;
 					}
 					
 					System.out.println("Recebi o pacote " + getSeqNum(dp.getData()) + " em RecebeDados\nESTADO == " + ESTADO);
+					System.out.println("rcvwnd que tem no pacote: " + getRcvwnd(data));
 					boolean apenasAck = false;
-					if (getAck(data) && dp.getLength() == 13 && !getSyn(data) && !getFin(data)) {
+					if (getAck(data) && dp.getLength() == headerLength && !getSyn(data) && !getFin(data)) {
 						apenasAck = true;
 					}
 					switch (ESTADO) {
@@ -406,16 +517,16 @@ public class Remetente {
 
 							synchronized (msgSentTimer) {
 								for (int i = sendBase; i < getackNum(data); i++) {
-									testeSendBufferEstado[i] = 3;
+									testeSendBufferEstado[(i)] = 3;
 								}
 								msgSentTimer.cancel();
 								msgTimerOn = false;
 								msgSentTimer = new Timer();
 								sendBase = getackNum(data);
+								sendWindowSize = getRcvwnd(data);
 								int peppa = transmitidoNaoReconhecido(nextSeqNum);
 								if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 									pktTimer = peppa;
-//									timeOutInterval = timeOutRTT;
 									msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
 									msgTimerOn = true;
 								}
@@ -431,7 +542,7 @@ public class Remetente {
 
 							synchronized (msgSentTimer) {
 								for (int i = sendBase; i < getackNum(data); i++) {
-									testeSendBufferEstado[i] = 3;
+									testeSendBufferEstado[(i)] = 3;
 								}
 								msgSentTimer.cancel();
 								msgSentTimer = new Timer();
@@ -440,18 +551,20 @@ public class Remetente {
 								int peppa = transmitidoNaoReconhecido(nextSeqNum);
 								if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 									pktTimer = peppa;
-//									timeOutInterval = timeOutRTT;
 									msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
 									msgTimerOn = true;
 								}
 							}
 							socket.connect(remoteInetAddress, remotePort);
-							byte[] ack = new byte[13];
+							byte[] ack = new byte[headerLength];
+							lastPacketRcvd = ackNum;
 							ackNum++;
-							sendWindowSize = getRcvwnd(dp.getData());
-							rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-							cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-							DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
+							sendWindowSize = getRcvwnd(data);
+							rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+							System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+									+ " - (" + rcvBase + " - 1)))");
+							cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+							DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 							// envio imediato de um ACK
 							
 							synchronized (delayedAckTimer) {
@@ -465,8 +578,8 @@ public class Remetente {
 							socket.send(ACK);
 							System.out.println("Mandei o ack " + ackNum);
 							synchronized (testeRcvBuffer) {
-								testeRcvBuffer[getSeqNum(data)] = dp;
-								testeRcvBufferEstado[getSeqNum(data)] = 2;
+								testeRcvBuffer[(getSeqNum(data))] = dp;
+								testeRcvBufferEstado[(getSeqNum(data))] = 2;
 								testeRcvBuffer.notify();
 							}
 							ESTADO = "ESTABLISHED";
@@ -476,22 +589,20 @@ public class Remetente {
 						// GERA ACK
 						if (!apenasAck) { // não se acka um ack
 							synchronized (testeRcvBuffer) {
-							System.out.println("Recebi o pacote " + getSeqNum(data) + " ESTADO ESTABLISHED");
+								System.out.println("Recebi o pacote " + getSeqNum(data) + " ESTADO ESTABLISHED");
+								if (getSeqNum(data) > lastPacketRcvd) {
+									lastPacketRcvd = getSeqNum(data);
+									System.out.println("lastPacketRcvd: " + lastPacketRcvd);
+								}
 								if (ackNum == getSeqNum(data)) {
 //									// chegada de datagrama com número de sequência esperado
-//									apenasAck = false;
-////									testeRcvBuffer[rcvLength] = dp;
-//									testeRcvBuffer[ackNum] = dp;
-////									testeRcvBufferEstado[rcvLength] = 1;
-//									testeRcvBufferEstado[ackNum] = 1;
-////									rcvLength += 1;
-//									rcvNext += 1;
-//									testeRcvBuffer.notify();
 									
 									// guarda datagrama no lugar certo
-									testeRcvBuffer[getSeqNum(data)] = dp;
-									testeRcvBufferEstado[getSeqNum(data)] = 1;
+									testeRcvBuffer[(getSeqNum(data))] = dp;
+									testeRcvBufferEstado[(getSeqNum(data))] = 1;
 									testeRcvBuffer.notify();
+									
+									sendWindowSize = getRcvwnd(data);
 									
 									int peppa = recebidoNaoReconhecido(ackNum);
 
@@ -518,15 +629,18 @@ public class Remetente {
 										}
 										System.out.println("segmento que preenche");
 
-										byte[] ack = new byte[13];
-										rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-										cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-										DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
+										byte[] ack = new byte[headerLength];
+										rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+												+ " - (" + rcvBase + " - 1)))");
+										System.out.println("Minha rcvwnd: " + rcvwnd);
+										cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+										DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 										// envio imediato de um ACK
 										socket.send(ACK);
 										System.out.println("Mandei o ack " + ackNum);
 										for (int i = 0; i < ackNum; i++) { // ack cumulativo enviado, atualizar
-											testeRcvBufferEstado[i] = 2;
+											testeRcvBufferEstado[(i)] = 2;
 										}
 									} else if (peppa == -1) {										
 
@@ -549,25 +663,29 @@ public class Remetente {
 											
 										System.out.println("segmento na ordem, tem outro na ordem esperando por transmissão de ack");
 
-										byte[] ack = new byte[13];
-										rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-										cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-										DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
+										byte[] ack = new byte[headerLength];
+										rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+												+ " - (" + rcvBase + " - 1)))");
+										System.out.println("Minha rcvwnd: " + rcvwnd);
+
+										cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+										DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 										// envio imediato de um único ACK cumulativo, reconhecendo ambos os pacotes
-//										if (random.nextBoolean()) { // simula perda de acks no caminho
-//											socket.send(ACK);
-//										}
-										
-										
-										if (random.nextDouble() < pDescartaAck) { // simula perda de acks
+										System.out.println("Construi um ack:\n");
+										System.out.println("SeqNum: " + nextSeqNum +
+												"\nackNum: " + ackNum +
+												"\nrcvwnd: " + rcvwnd);
+										if (random.nextDouble() >= pDescartaAck) { // simula perda de acks no caminho
 											socket.send(ACK);
+										} else {
+											System.out.println("Descartei o ack que ia enviar hehe");
 										}
 										
 										System.out.println("Mandei o ack " + ackNum);
 										
-
-										testeRcvBufferEstado[peppa] = 2; // ack enviado
-										testeRcvBufferEstado[peppa + 1] = 2; // ack enviado
+										testeRcvBufferEstado[(peppa)] = 2; // ack enviado
+										testeRcvBufferEstado[(peppa + 1)] = 2; // ack enviado
 										rcvLastAcked = peppa + 1;
 									}
 								} else if (ackNum < getSeqNum(data)) {
@@ -580,27 +698,41 @@ public class Remetente {
 											delayedAckTimer = new Timer();
 										}
 									}
+									
+									sendWindowSize = getRcvwnd(data);
+									
 									System.out.println(ackNum + " < " +getSeqNum(data));
 									// guarda datagrama no lugar certo
-									testeRcvBuffer[getSeqNum(data)] = dp;
-									testeRcvBufferEstado[getSeqNum(data)] = 1;
+									testeRcvBuffer[(getSeqNum(data))] = dp;
+									testeRcvBufferEstado[(getSeqNum(data))] = 1;
 									testeRcvBuffer.notify();
 									
-									byte[] ack = new byte[13];
-									rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-									cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-									DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
+									byte[] ack = new byte[headerLength];
+									rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+											+ " - (" + rcvBase + " - 1)))");
+									System.out.println("Minha rcvwnd: " + rcvwnd);
+
+									cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+									DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 									// envio imediato de um ACK duplicado, indicando número de sequência do pacote seguinte esperado
 									socket.send(ACK);
 									System.out.println("Mandei o ack " + ackNum);
 
 								} else {
 									// recebi pacote que já reconheci, repetir ack
+									
+									sendWindowSize = getRcvwnd(data);
+
 									System.out.println("Recebi pacote que já reconheci, repetir ack");
-									byte[] ack = new byte[13];
-									rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-									cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-									DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
+									byte[] ack = new byte[headerLength];
+									rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+											+ " - (" + rcvBase + " - 1)))");
+									System.out.println("Minha rcvwnd: " + rcvwnd);
+
+									cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+									DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 									
 									synchronized (delayedAckTimer) {
 										if (ackTimerOn) {
@@ -616,7 +748,26 @@ public class Remetente {
 							}
 						}
 						synchronized (testeSendBuffer) {
-							if (getackNum(data) > sendBase) {
+							if (getAckMe(data) && getAck(data)) {
+								System.out.println("Recebi um ack-ackme");
+								sendWindowSize = getRcvwnd(data);
+								testeSendBuffer.notify();
+								synchronized (ackMeTimer) {
+									if (ackMeTimerOn) {
+										ackMeTimer.cancel();
+										ackMeTimer = new Timer();
+										ackMeTimerOn = false;
+									}
+								}
+								System.out.println("acknum do ack-ackme: " + getackNum(data));
+								if (getackNum(data) > sendBase) {
+									System.out.println("sendBase = " + getackNum(data));
+									sendBase = getackNum(data);
+								}
+							} else if (getackNum(data) > sendBase) {
+								
+								sendWindowSize = getRcvwnd(data);
+
 								System.out.println("Recebi ack " + getackNum(data));
 								if (getackNum(data) > packetSample) {
 									timeAcked = System.currentTimeMillis();
@@ -631,7 +782,7 @@ public class Remetente {
 									timeOutRTT = estimatedRTT + (devRTT << 2);
 								}
 								for (int i = sendBase; i < getackNum(data); i++) {
-									testeSendBufferEstado[i] = 3;
+									testeSendBufferEstado[(i)] = 3;
 								}
 								sendBase = getackNum(data);
 								System.out.println("sendBase agora é " + sendBase);
@@ -650,27 +801,27 @@ public class Remetente {
 								}
 								testeSendBuffer.notify();
 							} else if (apenasAck && getackNum(data) < nextSeqNum) {
+								
+								sendWindowSize = getRcvwnd(data);
+								
 								// ack duplicado. apenasAck é para não achar que dado chegando é ack duplicado.
 								// < nextSeqNum é para não garantir que ele só está reenviando ack do último segmento
 								// que enviei
 								System.out.println("Recebi ack duplicado de " + getackNum(data));
-								acksDuplicados[getackNum(data)]++;
-								if (acksDuplicados[getackNum(data)] == 3) { // retransmissão rápida
-//									cabecalha(data, getackNum(data), ackNum,
-//											rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-//									for (int i = sendBase, j = 13; i < nextSeqNum; i++, j++) {
-//										data[j] = sendBuffer[i];
-//									}
-//									DatagramPacket dp = new DatagramPacket(data, data.length,
-//											remoteInetAddress, remotePort);
-									byte[] newData = testeSendBuffer[getackNum(data)].getData();
-									rcvwnd =  (short) (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+								acksDuplicados[(getackNum(data))]++;
+								if (acksDuplicados[(getackNum(data))] == 3) { // retransmissão rápida
+									byte[] newData = testeSendBuffer[(getackNum(data))].getData();
+									rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+											+ " - (" + rcvBase + " - 1)))");
+									System.out.println("Minha rcvwnd: " + rcvwnd);
+									// antes de retransmitir o pacote, atualiza o campo rcvwnd dele hehe.
 									setRcvwnd(newData, rcvwnd);
-									testeSendBuffer[getackNum(data)] = new DatagramPacket(newData, testeSendBuffer[getackNum(data)].getLength(),
-											testeSendBuffer[getackNum(data)].getAddress(), testeSendBuffer[getackNum(data)].getPort());
-									socket.send(testeSendBuffer[getackNum(data)]); // envia logo segmento perdido
+									testeSendBuffer[(getackNum(data))] = new DatagramPacket(newData, testeSendBuffer[(getackNum(data))].getLength(),
+											testeSendBuffer[(getackNum(data))].getAddress(), testeSendBuffer[(getackNum(data))].getPort());
+									socket.send(testeSendBuffer[(getackNum(data))]); // envia logo segmento perdido
 									System.out.println("Retransmiti rapidamente o pacote " + getackNum(data));
-									acksDuplicados[getackNum(data)] = 0;
+									acksDuplicados[(getackNum(data))] = 0;
 									synchronized (msgSentTimer) {
 										if (!msgTimerOn) {
 											timeOutInterval = timeOutRTT;
@@ -680,145 +831,10 @@ public class Remetente {
 										}
 									}
 								}
+								testeSendBuffer.notify();
 							}
 						}
 					}
-/*
-					// descartar se não for da conexão
-					// não precisa mais disso pois eu usei o connect
-//					if (dp.getPort() == remotePort && dp.getAddress() == remoteInetAddress) {
-						data = dp.getData();
-						if (getSyn(data) && getAck(data)) {
-							if (!connectionEstablished) {
-								remotePort = dp.getPort();
-								remoteInetAddress = dp.getAddress();
-								socket.connect(remoteInetAddress, remotePort);
-								connectionEstablished = true;
-							}
-						}
-						boolean apenasAck = true;
-						// GERA ACK
-						if (!(getAck(data) || dp.getLength() == 13)) { // não se acka um ack
-							synchronized (testeRcvBuffer) {
-								if (ackNum == getSeqNum(data)) {
-									// chegada de segmento com número de sequência esperado
-									apenasAck = false;
-//									testeRcvBuffer[rcvLength] = dp;
-									testeRcvBuffer[ackNum] = dp;
-//									testeRcvBufferEstado[rcvLength] = 1;
-									testeRcvBufferEstado[ackNum] = 1;
-//									rcvLength += 1;
-									rcvNext += 1;
-									testeRcvBuffer.notify();
-									
-
-									
-									int peppa = recebidoNaoReconhecido(ackNum);
-									
-									// esse pacote pode ter sido um que preenche lacuna. preciso buscar nos estados
-									// e colocar o próximo esperado (ackNum) no primeiro com estado 0 que eu encontrar.
-									boolean preenche = false;
-									int peppa2 = descobreProximoEsperado();
-									if (peppa2 != -1 && ackNum != peppa2) {
-										ackNum = peppa2;
-										preenche = true;
-									} else {
-										System.out.println("ERRO NO DESCOBRE PROXIMO ESTADO, NÃO FAZ SENTIDO DAR -1");
-									}
-//									int peppa = recebidoNaoReconhecido(rcvLength);
-//									ackNum = getSeqNum(data) + 1;
-									if (preenche) {
-										// chegada de um segmento que preenche, parcial ou completamente, a lacuna de dados recebidos
-										if (ackTimerOn) {
-											delayedAckTimer.cancel();
-											ackTimerOn = false;
-											delayedAckTimer = new Timer();
-										}
-										byte[] ack = new byte[13];
-										cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-										DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
-										// envio imediato de um ACK
-										socket.send(ACK);
-										for (int i = 0; i < ackNum; i++) { // ack cumulativo enviado, atualizar
-											testeRcvBufferEstado[i] = 2;
-										}
-									} else if (peppa == -1) {
-										// todos os dados até o número de seq esperado já tiveram seu ACK enviado
-										delayedAckTimer.schedule(new DelayedAckTimeOut(), 500);
-										ackTimerOn = true;
-									} else {
-										// Outro segmento na ordem esperando por transmissão de ACK
-										if (ackTimerOn) {
-											delayedAckTimer.cancel();
-											ackTimerOn = false;
-											delayedAckTimer = new Timer();
-										}
-										byte[] ack = new byte[13];
-										cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-										DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
-										// envio imediato de um único ACK cumulativo, reconhecendo ambos os pacotes
-										socket.send(ACK);
-										testeRcvBufferEstado[peppa] = 2; // ack enviado
-										testeRcvBufferEstado[peppa + 1] = 2; // ack enviado
-									}
-								} else if (ackNum < getSeqNum(data)) {
-									// chegada de um segmento fora de ordem com número de sequência mais alto do que o esperado
-									// lacuna detectada
-									if (ackTimerOn) {
-										delayedAckTimer.cancel();
-										ackTimerOn = false;
-										delayedAckTimer = new Timer();
-									}
-									// guarda ele no lugar certo
-									testeRcvBuffer[getSeqNum(data)] = dp;
-									testeRcvBufferEstado[getSeqNum(data)] = 1;
-									byte[] ack = new byte[13];
-									cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-									DatagramPacket ACK = new DatagramPacket(ack, 13, remoteInetAddress, remotePort);
-									// envio imediato de um ACK duplicado, indicando número de sequência do pacote seguinte esperado
-									socket.send(ACK);
-								}
-							}
-						}
-						synchronized (testeSendBuffer) {
-							if (getackNum(data) > sendBase) {
-								for (int i = sendBase; i < getackNum(data); i++) {
-									testeSendBufferEstado[i] = 3;
-								}
-								sendBase = getackNum(data);
-								synchronized (msgSentTimer) {
-									msgTimerOn = false; // pq chegou e tal
-									msgSentTimer.cancel();
-									msgSentTimer = new Timer();
-									int peppa = transmitidoNaoReconhecido(nextSeqNum);
-									if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
-										pktTimer = peppa;
-										msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
-										msgTimerOn = true;
-									}
-								}
-								testeSendBuffer.notify();
-							} else if (apenasAck) { // ack duplicado. apenasAck é para não achar que dado chegando é ack duplicado.
-								acksDuplicados[getackNum(data)]++;
-								if (acksDuplicados[getackNum(data)] == 3) { // retransmissão rápida
-//									cabecalha(data, getackNum(data), ackNum,
-//											rcvwnd, (byte) 1, (byte) 0, (byte) 0);
-//									for (int i = sendBase, j = 13; i < nextSeqNum; i++, j++) {
-//										data[j] = sendBuffer[i];
-//									}
-//									DatagramPacket dp = new DatagramPacket(data, data.length,
-//											remoteInetAddress, remotePort);
-									socket.send(testeSendBuffer[getackNum(data)]); // envia logo segmento perdido
-									acksDuplicados[getackNum(data)] = 0;
-									if (!msgTimerOn) {
-										msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
-										msgTimerOn = true;
-										pktTimer = getackNum(data);
-									}
-								}
-							}
-						}
-//					}*/
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -829,7 +845,7 @@ public class Remetente {
 	}
 	
 	private void cabecalha(byte[] data, int nextSeqNum, int ackNum,
-			short rcvwnd, byte ack, byte syn, byte fin) {
+			int rcvwnd, byte ack, byte syn, byte fin, byte ackMe) {
 		// numero de sequencia
 		data[0] = (byte) (nextSeqNum >>> 24);
 	    data[1] = (byte) (nextSeqNum >>> 16);
@@ -850,24 +866,29 @@ public class Remetente {
 	    data[10] = ack;
 	    data[11] = syn;
 	    data[12] = fin;
+	    
+	    data[13] = ackMe;
 	}
 	
-	private void setRcvwnd(byte[] data, short rcvwnd) {
+	private void setRcvwnd(byte[] data, int rcvwnd) {
 		data[8] = (byte) (rcvwnd >>> 8);
 		data[9] = (byte) (rcvwnd & 0x00ffL);
 	}
 
 	
 	private int getackNum(byte[] data) {
-		return (int) (data[4] << 24) + (int) (data[5] << 16) + (int) (data[6] << 8) + (int) data[7];
+//		return (int) (data[4] << 24) + (int) (data[5] << 16) + (int) (data[6] << 8) + (int) data[7];
+		return ((data[4] & 0xFF) << 24) + ((data[5] & 0xFF) << 16) + ((data[6] & 0xFF) << 8) + ((data[7] & 0xFF));
 	}
 	
 	private int getSeqNum(byte[] data) {
-		return (int) (data[0] << 24) + (int) (data[1] << 16) + (int) (data[2] << 8) + (int) data[3];
+//		return (int) (data[0] << 24) + (int) (data[1] << 16) + (int) (data[2] << 8) + (int) data[3];
+		return ((data[0] & 0xFF) << 24) + ((data[1] & 0xFF) << 16) + ((data[2] & 0xFF) << 8) + ((data[3] & 0xFF));
 	}
 	
-	private short getRcvwnd(byte[] data) {
-		return (short) ((short) (data[8] << 8) + (short) (data[9]));
+	private int getRcvwnd(byte[] data) {
+//		return (short) ((short) (data[8] << 8) + (short) (data[9]));
+		return ((data[8] & 0xFF) << 8) + ((data[9] & 0xFF)); // dessa forma não vai fazer 199 virar -57...
 	}
 	
 	private boolean getAck(byte[] data) {
@@ -889,6 +910,14 @@ public class Remetente {
 	private boolean getFin(byte[] data) {
 		try {
 			return data[12] == 1 ? true : false;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+	
+	private boolean getAckMe(byte[] data) {
+		try {
+			return data[13] == 1 ? true : false;
 		} catch (Exception e) {
 			return false;
 		}
