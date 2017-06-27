@@ -1,5 +1,6 @@
 package protocol;
 
+import utility.arrays.*;
 import java.time.LocalTime;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
@@ -79,6 +80,21 @@ public class PReceiver {
 		ourWindowSize = newSize;
 	}
 	
+	/** 
+	 * Determina novo limite inferior para janela de congestionamento.
+	 * @param newThreshold
+	 */
+	public void setThreshold(int newThreshold) {
+		threshold = newThreshold;
+	}
+
+	/**
+	 * @return Tamanho do limite inferior da janela de congestionamento.
+	 */
+	public int getThreshold() {
+		return threshold;
+	}
+	
 	/**
 	 * Adiciona momento de envio de um pacote pelo lado remetente da aplicação para cálculo de RTT.
 	 * @param time Momento do envio de pacote.
@@ -106,17 +122,18 @@ public class PReceiver {
 	 * @return Array de bytes contendo mensagem.
 	 */
 	private byte[] decapsulateDatagram(DatagramPacket datagram) {
-		byte message [] = null;
+		byte header[] = ArrayMethods.byteArraySubset(datagram.getData(), 0, 37);
+		byte message[] = ArrayMethods.byteArraySubset(datagram.getData(), 37, datagram.getData().length - 37);
 		
 		return message;
 	}
 	
 	/**
 	 * Mï¿½todo para julgar segmentos e decidir como proceder.
-	 * @param toJudge Segmento a ser julgado.
+	 * @param header header a ser julgado.
 	 * @return Integer representando possibilidade de resposta.
 	 */
-	private int judgeDatagram(DatagramPacket toJudge) {
+	private int judgeDatagram(byte[] header) {
 		return 0;
 	}
 }

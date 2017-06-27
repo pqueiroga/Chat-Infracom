@@ -75,13 +75,16 @@ public class PSender {
 					try {
 						dataIn.close();
 						dis.close();
-					} catch (IOException ioe) {}
-					finally {
+					} catch (IOException ioe) {
+						
+					} finally {
 						timer.cancel();
 					}
 				}
 			}
 		};
+		
+		timer.schedule(timerTask, 0, 50);
 	}
 
 	/**
@@ -201,7 +204,15 @@ public class PSender {
 			public void run() {
 				if (receiverSide.getLastAcked() <= lastByte) {
 					reSendData(toSend);
-				} else this.cancel();
+					int newThreshold = receiverSide.getThreshold() / 2;
+					newThreshold = (newThreshold == 0) ? 1 : newThreshold;
+					receiverSide.setThreshold(newThreshold);
+					receiverSide.setOurWindowSize(newThreshold);
+				} else {
+					sentUnacked--;
+					timerTasks.remove(this);
+					this.cancel();
+				}
 			}
 		};
 		
@@ -227,15 +238,6 @@ public class PSender {
 	 */
 	public void kill() {
 		alive = false;
-	}
-	
-	/**
-	 * Atualiza o registro do número de pacotes enviados sem que ainda tenham recebido um ACK, além
-	 * de remover um pacote da lista de retransmissão rápida.
-	 */
-	public void updateAckedNumber() {
-		sentUnacked += -1;
-		timerTasks.pop();
 	}
 	
 	/**
