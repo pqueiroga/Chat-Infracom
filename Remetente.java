@@ -53,6 +53,10 @@ public class Remetente {
 	private Timer delayedAckTimer = new Timer();
 	private Timer ackMeTimer = new Timer();
 	
+	private AckMePls testeAckMeTimerTask = new AckMePls();
+	private DelayedAckTimeOut testeDelayedAckTimerTask = new DelayedAckTimeOut();
+	private MsgSentTimeOut testeMsgSentTimerTask = new MsgSentTimeOut();
+	
 	private Thread tEnvia, tRecebe;
 	
 	public Remetente(String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
@@ -238,6 +242,7 @@ public class Remetente {
 	
 	private boolean podeEnviar() {
 		for (int i = sendBase; i < sendBase + sendWindowSize  && i < nextSeqNum; i++) {//i < nextSeqNum && i < testeSendBufferEstado.length; i++) {
+			System.out.println("testeSendBufferEstado[circulariza(i) (" + circulariza(i) + ")]: " +testeSendBufferEstado[circulariza(i)]);
 			if (testeSendBufferEstado[circulariza(i)] == 1) {
 				return true;
 			}
@@ -291,28 +296,25 @@ public class Remetente {
 				synchronized (testeSendBuffer) {
 					while (!podeEnviar()) {
 						try {
-//							System.out.println("Estou esperando no testeSendBuffer pra enviar dados");
+							System.out.println("Estou esperando no testeSendBuffer pra enviar dados");
 							if (sendWindowSize == 0) {
 								synchronized (ackMeTimer) {
-									if (ackMeTimerOn) {
-										try {
-											ackMeTimer.cancel();
-											ackMeTimer = new Timer();
-										} catch (IllegalStateException e) {
-											ackMeTimer = new Timer();
-										}
+									
+									testeAckMeTimerTask.cancel();
+									testeAckMeTimerTask = new AckMePls();
+
+									try {
+										ackMeTimer.schedule(testeAckMeTimerTask, timeOutRTT);
+									} catch (IllegalStateException e) {
+										testeAckMeTimerTask.cancel();
+										testeAckMeTimerTask = new AckMePls();
+										ackMeTimer.schedule(testeAckMeTimerTask, timeOutRTT);
 									}
 									ackMeTimerOn = true;
-									try {
-										ackMeTimer.schedule(new AckMePls(), timeOutRTT);
-									} catch (IllegalStateException e) {
-										ackMeTimer = new Timer();
-										ackMeTimer.schedule(new AckMePls(), timeOutRTT);
-									}
 								}
 							}
 							testeSendBuffer.wait();
-//							System.out.println("Saí da espera no testeSendBuffer");
+							System.out.println("Saí da espera no testeSendBuffer, sendWindowSize: " + sendWindowSize);
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -330,15 +332,11 @@ public class Remetente {
 //								System.out.println("Pacotes no ar: " + (i - 1 - (sendBase - 1)));
 								
 								synchronized (ackMeTimer) {
-									if (ackMeTimerOn) {
-										try {
-											ackMeTimer.cancel();
-											ackMeTimer = new Timer();
-										} catch (IllegalStateException e) {
-											ackMeTimer = new Timer();
-										}
+//									if (ackMeTimerOn) {
+										testeAckMeTimerTask.cancel();
+										testeAckMeTimerTask = new AckMePls();
 										ackMeTimerOn = false;
-									}
+//									}
 								}
 								System.out.println("Enviei o pacote " + i);
 								socket.send(testeSendBuffer[circulariza(i)]);
@@ -348,10 +346,11 @@ public class Remetente {
 										pktTimer = sendBase;
 										timeOutInterval = 500;//= timeOutRTT;
 										try {
-											msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 										} catch (IllegalStateException e) {
-											msgSentTimer = new Timer();
-											msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+											testeMsgSentTimerTask.cancel();
+											testeMsgSentTimerTask = new MsgSentTimeOut();
+											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 										}
 										msgTimerOn = true;
 									}
@@ -366,14 +365,9 @@ public class Remetente {
 								synchronized (delayedAckTimer) {
 									if (ackTimerOn) {
 										if (ackTimer <= ackNum) {
-											try {
-												delayedAckTimer.cancel();
-												delayedAckTimer = new Timer();
-											} catch (IllegalStateException e) {
-												delayedAckTimer = new Timer();
-											}
+											testeDelayedAckTimerTask.cancel();
+											testeDelayedAckTimerTask = new DelayedAckTimeOut();
 											ackTimerOn = false;
-
 										}
 									}
 								}
@@ -389,104 +383,130 @@ public class Remetente {
 	
 	class AckMePls extends TimerTask {
 		public void run() {
-			synchronized (ackMeTimer) {
-				try {
-					System.out.println("Enviando ackMe pois sendWindowSize == " + sendWindowSize);
+			try {
+				synchronized (ackMeTimer) {
 					try {
-						ackMeTimer.cancel();
-						ackMeTimer = new Timer();
-					} catch (IllegalStateException e) {
-						ackMeTimer = new Timer();
+						System.out.println("Enviando ackMe pois sendWindowSize == " + sendWindowSize);
+//						try {
+//							testeAckMeTimerTask.cancel();
+//						} catch (IllegalStateException e) {
+//							testeAckMeTimerTask = new AckMePls();
+//						}
+						testeAckMeTimerTask.cancel();
+						testeAckMeTimerTask = new AckMePls();
+						byte[] data = new byte[headerLength];
+						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+	//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+	//							+ " - (" + rcvBase + " - 1)))");
+						
+						cabecalha(data, nextSeqNum, ackNum, rcvwnd, (byte) 0, (byte) 0, (byte) 0, (byte) 1);
+						System.out.println("SeqNum: " + nextSeqNum +
+								"\nackNum: " + ackNum +
+								"\nrcvwnd: " + rcvwnd +
+								"\nack: " + getAck(data) +
+								"\nackme: " + getAckMe(data));
+						DatagramPacket dp = new DatagramPacket(data, headerLength, remoteInetAddress, remotePort);
+						socket.send(dp);
+						if (sendWindowSize == 0) {
+							try {
+								ackMeTimer.schedule(testeAckMeTimerTask, timeOutRTT);
+							} catch (IllegalStateException e) {
+								testeAckMeTimerTask.cancel();
+								testeAckMeTimerTask = new AckMePls();
+								ackMeTimer.schedule(testeAckMeTimerTask, timeOutRTT);
+							}
+						} else {
+							ackMeTimerOn = false;
+						}
+					} catch (IOException e) {
+						// TODO
+						e.printStackTrace();
 					}
-					byte[] data = new byte[headerLength];
-					rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
-//							+ " - (" + rcvBase + " - 1)))");
-					
-					cabecalha(data, nextSeqNum, ackNum, rcvwnd, (byte) 0, (byte) 0, (byte) 0, (byte) 1);
-					DatagramPacket dp = new DatagramPacket(data, headerLength, remoteInetAddress, remotePort);
-					socket.send(dp);
-					try {
-						ackMeTimer.schedule(new AckMePls(), timeOutRTT);
-					} catch (IllegalStateException e) {
-						ackMeTimer = new Timer();
-						ackMeTimer.schedule(new AckMePls(), timeOutRTT);
-					}
-				} catch (IOException e) {
-					// TODO
-					e.printStackTrace();
 				}
-			}
+			} catch (Exception e) {}
 		}
 	}
 	
 	class MsgSentTimeOut extends TimerTask {
 		public void run() {
-			synchronized (msgSentTimer) {
-				System.out.println("Pacote " + pktTimer + " deu timeout.");
-				try {
+			try {
+				synchronized (msgSentTimer) {
+					System.out.println("Pacote " + pktTimer + " deu timeout.");
 					try {
-						msgSentTimer.cancel();
-						msgSentTimer = new Timer();
-					} catch (IllegalStateException e) {
-						msgSentTimer = new Timer();
+//						try {
+//							testeMsgSentTimerTask.cancel();
+////							msgSentTimer.cancel();
+////							msgSentTimer = new Timer();
+//						} catch (IllegalStateException e) {
+//							msgSentTimer = new Timer();
+//						}
+						testeMsgSentTimerTask.cancel();
+						testeMsgSentTimerTask = new MsgSentTimeOut();
+						
+						byte[] newData = testeSendBuffer[circulariza(pktTimer)].getData();
+						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+	//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+	//							+ " - (" + rcvBase + " - 1)))");
+						setRcvwnd(newData, rcvwnd);
+						testeSendBuffer[circulariza(pktTimer)] = new DatagramPacket(newData, testeSendBuffer[circulariza(pktTimer)].getLength(),
+								testeSendBuffer[circulariza(pktTimer)].getAddress(), testeSendBuffer[circulariza(pktTimer)].getPort());
+						socket.send(testeSendBuffer[circulariza(pktTimer)]);
+						if (timeOutInterval < 10000) { // duplicação do tempo de expiração
+							timeOutInterval = timeOutInterval << 1;
+						}
+						try {
+							msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
+						} catch (IllegalStateException e) {
+							testeMsgSentTimerTask.cancel();
+							testeMsgSentTimerTask = new MsgSentTimeOut();
+							msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
+						}
+					} catch (IOException e) {
+						// TODO rip
+						e.printStackTrace();
 					}
-					byte[] newData = testeSendBuffer[circulariza(pktTimer)].getData();
-					rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
-//							+ " - (" + rcvBase + " - 1)))");
-					setRcvwnd(newData, rcvwnd);
-					testeSendBuffer[circulariza(pktTimer)] = new DatagramPacket(newData, testeSendBuffer[circulariza(pktTimer)].getLength(),
-							testeSendBuffer[circulariza(pktTimer)].getAddress(), testeSendBuffer[circulariza(pktTimer)].getPort());
-					socket.send(testeSendBuffer[circulariza(pktTimer)]);
-					if (timeOutInterval < 10000) { // duplicação do tempo de expiração
-						timeOutInterval = timeOutInterval << 1;
-					}
-					try {
-						msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
-					} catch (IllegalStateException e) {
-						msgSentTimer = new Timer();
-						msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
-					}
-				} catch (IOException e) {
-					// TODO rip
-					e.printStackTrace();
 				}
-			}
+			} catch (Exception e) {}
 		}
 	}
 	
 	class DelayedAckTimeOut extends TimerTask {
 		public void run() {
-			synchronized (delayedAckTimer) {
-				System.out.println("Delayed Ack " + ackTimer + " deve ser enviado agora!");
-				try {
+			try {
+				synchronized (delayedAckTimer) {
+					System.out.println("Delayed Ack " + ackTimer + " deve ser enviado agora!");
 					try {
-						delayedAckTimer.cancel();
-						delayedAckTimer = new Timer();
-					} catch (IllegalStateException e) {
-						delayedAckTimer = new Timer();
+//						try {
+//							delayedAckTimer.cancel();
+//							delayedAckTimer = new Timer();
+//						} catch (IllegalStateException e) {
+//							delayedAckTimer = new Timer();
+//						}
+						
+						testeDelayedAckTimerTask.cancel();
+						testeDelayedAckTimerTask = new DelayedAckTimeOut();
+						
+						ackTimerOn = false;
+	
+						byte[] ack = new byte[headerLength];
+						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+	//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+	//							+ " - (" + rcvBase + " - 1)))");
+						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
+						// esperou 500 ms pela chegada de outro pacote na ordem, que deveria cancelar.
+						// se não foi cancelado ou seja, entrou aqui, então envia o ACK mesmo.
+						// // testeRcvBufferEstado[circulariza(ackTimer)] = 2;
+						if (ackTimer > rcvLastAcked) {
+							rcvLastAcked = ackTimer;
+						}
+						socket.send(ACK);
+					} catch (IOException e) {
+						// TODO rip
+						e.printStackTrace();
 					}
-					ackTimerOn = false;
-
-					byte[] ack = new byte[headerLength];
-					rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
-//							+ " - (" + rcvBase + " - 1)))");
-					cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
-					DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
-					// esperou 500 ms pela chegada de outro pacote na ordem, que deveria cancelar.
-					// se não foi cancelado ou seja, entrou aqui, então envia o ACK mesmo.
-					// // testeRcvBufferEstado[circulariza(ackTimer)] = 2;
-					if (ackTimer > rcvLastAcked) {
-						rcvLastAcked = ackTimer;
-					}
-					socket.send(ACK);
-				} catch (IOException e) {
-					// TODO rip
-					e.printStackTrace();
 				}
-			}
+			} catch (Exception e) {}
 		}
 	}
 	
@@ -510,6 +530,31 @@ public class Remetente {
 						continue;
 					}
 					
+					if (getAckMe(data) && !getAck(data)) { 
+						// aqui é para o caso do host remetente estar vendo
+						// um sendWindowSize 0 e ficar mandando pacotes pra mim só para receber
+						// o ack de volta e ser atualizado sobre o sendWindowSize.
+						System.out.println("Recebi um ackme");
+						byte[] ack = new byte[headerLength];
+						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+						System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+								+ " - (" + rcvBase + " - 1)))");
+						// envia de volta o ack-ackMe
+						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 1);
+						System.out.println("enviei de volta ack-ackme");
+						System.out.println("SeqNum: " + nextSeqNum +
+								"\nackNum: " + ackNum +
+								"\nrcvwnd: " + rcvwnd +
+								"\nack: " + getAck(data) +
+								"\nackme: " + getAckMe(data));
+						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
+						// envio imediato de um ACK
+						socket.send(ACK);
+						timeOutInterval = 500;//= timeOutRTT;
+						continue;
+					}
+					
+					
 					if (getSeqNum(data) > lastPacketRcvd + rcvwnd) {
 						System.out.println("Não cabe na janela de recepção, descartei essa merda");
 						byte[] ack = new byte[headerLength];
@@ -526,23 +571,6 @@ public class Remetente {
 //					System.out.println("Rcvwnd que tem no pacote " + getRcvwnd(data));
 					sendWindowSize = getRcvwnd(data); // testando se isso melhora o paralelismo
 					
-					if (getAckMe(data) && !getAck(data)) { 
-						// aqui é para o caso do host remetente estar vendo
-						// um sendWindowSize 0 e ficar mandando pacotes pra mim só para receber
-						// o ack de volta e ser atualizado sobre o sendWindowSize.
-						byte[] ack = new byte[headerLength];
-						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-						System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
-								+ " - (" + rcvBase + " - 1)))");
-						// envia de volta o ack-ackMe
-						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 1);
-						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
-						// envio imediato de um ACK
-						socket.send(ACK);
-						timeOutInterval = 500;//= timeOutRTT;
-						continue;
-					}
-					
 //					System.out.println("Recebi o pacote " + getSeqNum(dp.getData()) + " em RecebeDados\nESTADO == " + ESTADO);
 //					System.out.println("rcvwnd que tem no pacote: " + getRcvwnd(data));
 					boolean apenasAck = false;
@@ -558,12 +586,16 @@ public class Remetente {
 								for (int i = sendBase; i < getackNum(data); i++) {
 									testeSendBufferEstado[circulariza(i)] = 3;
 								}
-								try {
-									msgSentTimer.cancel();
-									msgSentTimer = new Timer();
-								} catch (IllegalStateException e) {
-									msgSentTimer = new Timer();
-								}
+//								try {
+//									msgSentTimer.cancel();
+//									msgSentTimer = new Timer();
+//								} catch (IllegalStateException e) {
+//									msgSentTimer = new Timer();
+//								}
+								
+								testeMsgSentTimerTask.cancel();
+								testeMsgSentTimerTask = new MsgSentTimeOut();
+								
 								msgTimerOn = false;
 
 								sendBase = getackNum(data);
@@ -572,10 +604,11 @@ public class Remetente {
 								if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 									pktTimer = peppa;
 									try {
-										msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+										msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 									} catch (IllegalStateException e) {
-										msgSentTimer = new Timer();
-										msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+										testeMsgSentTimerTask.cancel();
+										testeMsgSentTimerTask = new MsgSentTimeOut();
+										msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 									}
 									msgTimerOn = true;
 								}
@@ -593,22 +626,25 @@ public class Remetente {
 								for (int i = sendBase; i < getackNum(data); i++) {
 									testeSendBufferEstado[circulariza(i)] = 3;
 								}
-								try {
-									msgSentTimer.cancel();
-									msgSentTimer = new Timer();
-								} catch (IllegalStateException e) {
-									msgSentTimer = new Timer();
-								}
+//								try {
+//									msgSentTimer.cancel();
+//									msgSentTimer = new Timer();
+//								} catch (IllegalStateException e) {
+//									msgSentTimer = new Timer();
+//								}
+								testeMsgSentTimerTask.cancel();
+								testeMsgSentTimerTask = new MsgSentTimeOut();
 								msgTimerOn = false;
 								sendBase = getackNum(data);
 								int peppa = transmitidoNaoReconhecido(nextSeqNum);
 								if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 									pktTimer = peppa;
 									try {
-										msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+										msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 									} catch (IllegalStateException e) {
-										msgSentTimer = new Timer();
-										msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+										testeMsgSentTimerTask.cancel();
+										testeMsgSentTimerTask = new MsgSentTimeOut();
+										msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 									}
 									msgTimerOn = true;
 								}
@@ -627,12 +663,14 @@ public class Remetente {
 							
 							synchronized (delayedAckTimer) {
 								if (ackTimerOn) {
-									try {
-										delayedAckTimer.cancel();
-										delayedAckTimer = new Timer();
-									} catch (IllegalStateException e) {
-										delayedAckTimer = new Timer();
-									}
+//									try {
+//										delayedAckTimer.cancel();
+//										delayedAckTimer = new Timer();
+//									} catch (IllegalStateException e) {
+//										delayedAckTimer = new Timer();
+//									}
+									testeDelayedAckTimerTask.cancel();
+									testeDelayedAckTimerTask = new DelayedAckTimeOut();
 									ackTimerOn = false;
 
 								}
@@ -688,12 +726,14 @@ public class Remetente {
 										// chegada de um segmento que preenche, parcial ou completamente, a lacuna de dados recebidos
 										synchronized (delayedAckTimer) {
 											if (ackTimerOn) {
-												try {
-													delayedAckTimer.cancel();
-													delayedAckTimer = new Timer();
-												} catch (IllegalStateException e) {
-													delayedAckTimer = new Timer();
-												}
+//												try {
+//													delayedAckTimer.cancel();
+//													delayedAckTimer = new Timer();
+//												} catch (IllegalStateException e) {
+//													delayedAckTimer = new Timer();
+//												}
+												testeDelayedAckTimerTask.cancel();
+												testeDelayedAckTimerTask = new DelayedAckTimeOut();
 												ackTimerOn = false;
 
 											}
@@ -720,10 +760,11 @@ public class Remetente {
 										synchronized (delayedAckTimer) {
 											ackTimer = ackNum;
 											try {
-												delayedAckTimer.schedule(new DelayedAckTimeOut(), 500);
+												delayedAckTimer.schedule(testeDelayedAckTimerTask, 500);
 											} catch (IllegalStateException e) {
-												delayedAckTimer = new Timer();
-												delayedAckTimer.schedule(new DelayedAckTimeOut(), 500);
+												testeDelayedAckTimerTask.cancel();
+												testeDelayedAckTimerTask = new DelayedAckTimeOut();
+												delayedAckTimer.schedule(testeDelayedAckTimerTask, 500);
 											}
 											ackTimerOn = true;
 										}
@@ -731,12 +772,15 @@ public class Remetente {
 										// segmento na ordem, tem outro segmento na ordem esperando por transmissão de ACK
 										synchronized (delayedAckTimer) {
 											if (ackTimerOn) {
-												try {
-													delayedAckTimer.cancel();
-													delayedAckTimer = new Timer();
-												} catch (IllegalStateException e) {
-													delayedAckTimer = new Timer();
-												}
+//												try {
+//													delayedAckTimer.cancel();
+//													delayedAckTimer = new Timer();
+//												} catch (IllegalStateException e) {
+//													delayedAckTimer = new Timer();
+//												}
+												
+												testeDelayedAckTimerTask.cancel();
+												testeDelayedAckTimerTask = new DelayedAckTimeOut();
 												ackTimerOn = false;
 											}
 										}
@@ -755,7 +799,9 @@ public class Remetente {
 										System.out.println("Construi um ack:");
 										System.out.println("SeqNum: " + nextSeqNum +
 												"\nackNum: " + ackNum +
-												"\nrcvwnd: " + rcvwnd);
+												"\nrcvwnd: " + rcvwnd +
+												"\nack: " + getAck(data) +
+												"\nackme: " + getAckMe(data));
 										if (random.nextDouble() >= pDescartaAck) { // simula perda de acks no caminho
 											socket.send(ACK);
 											System.out.println("Mandei o ack " + ackNum);
@@ -773,12 +819,14 @@ public class Remetente {
 									// lacuna detectada
 									synchronized (delayedAckTimer) {
 										if (ackTimerOn) {
-											try {
-												delayedAckTimer.cancel();
-												delayedAckTimer = new Timer();
-											} catch (IllegalStateException e) {
-												delayedAckTimer = new Timer();
-											}
+//											try {
+//												delayedAckTimer.cancel();
+//												delayedAckTimer = new Timer();
+//											} catch (IllegalStateException e) {
+//												delayedAckTimer = new Timer();
+//											}
+											testeDelayedAckTimerTask.cancel();
+											testeDelayedAckTimerTask = new DelayedAckTimeOut();
 											ackTimerOn = false;
 										}
 									}
@@ -826,12 +874,14 @@ public class Remetente {
 									
 									synchronized (delayedAckTimer) {
 										if (ackTimerOn) {
-											try {
-												delayedAckTimer.cancel();
-												delayedAckTimer = new Timer();
-											} catch (IllegalStateException e) {
-												delayedAckTimer = new Timer();
-											}
+//											try {
+//												delayedAckTimer.cancel();
+//												delayedAckTimer = new Timer();
+//											} catch (IllegalStateException e) {
+//												delayedAckTimer = new Timer();
+//											}
+											testeDelayedAckTimerTask.cancel();
+											testeDelayedAckTimerTask = new DelayedAckTimeOut();
 											ackTimerOn = false;
 										}
 									}
@@ -844,19 +894,23 @@ public class Remetente {
 						synchronized (testeSendBuffer) {
 							if (getAckMe(data) && getAck(data)) {
 								System.out.println("Recebi um ack-ackme");
-								sendWindowSize = getRcvwnd(data);
 								synchronized (ackMeTimer) {
 									if (ackMeTimerOn) {
-										try {
-											ackMeTimer.cancel();
-											ackMeTimer = new Timer();
-										} catch (IllegalStateException e) {
-											ackMeTimer = new Timer();
-										}
+//										try {
+//											testeAckMeTimerTask.cancel();
+//											ackMeTimer = new Timer();
+//										} catch (IllegalStateException e) {
+//											testeAckMeTimerTask.cancel();
+//										}
+										testeAckMeTimerTask.cancel();
+										testeAckMeTimerTask = new AckMePls();
 										ackMeTimerOn = false;
 									}
 								}
-								System.out.println("acknum do ack-ackme: " + getackNum(data));
+								sendWindowSize = getRcvwnd(data);
+								System.out.println("acknum do ack-ackme: " + getackNum(data) +
+										"\nrcvwnd do ack-ackme: " + getRcvwnd(data) +
+										"\nsendWindowSize pra mim agora: " + sendWindowSize);
 								if (getackNum(data) > sendBase) {
 									System.out.println("sendBase = " + getackNum(data));
 									sendBase = getackNum(data);
@@ -888,22 +942,19 @@ public class Remetente {
 
 								synchronized (msgSentTimer) {
 									
-									try {
-										msgSentTimer.cancel();
-										msgSentTimer = new Timer();
-									} catch (IllegalStateException e) {
-										msgSentTimer = new Timer();
-									}
+									testeMsgSentTimerTask.cancel();
+									testeMsgSentTimerTask = new MsgSentTimeOut();
 									msgTimerOn = false; // pq chegou e tal
 									int peppa = transmitidoNaoReconhecido(nextSeqNum);
 									if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 										pktTimer = peppa;
 										timeOutInterval = 500;//= timeOutRTT;
 										try {
-											msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 										} catch (IllegalStateException e) {
-											msgSentTimer = new Timer();
-											msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+											testeMsgSentTimerTask.cancel();
+											testeMsgSentTimerTask = new MsgSentTimeOut();
+											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 										}
 										msgTimerOn = true;
 									}
@@ -937,10 +988,11 @@ public class Remetente {
 											pktTimer = getackNum(data);
 											timeOutInterval = 500;//= timeOutRTT;
 											try {
-												msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+												msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 											} catch (IllegalStateException e) {
-												msgSentTimer = new Timer();
-												msgSentTimer.schedule(new MsgSentTimeOut(), timeOutInterval);
+												testeMsgSentTimerTask.cancel();
+												testeMsgSentTimerTask = new MsgSentTimeOut();
+												msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 											}
 											msgTimerOn = true;
 										}
