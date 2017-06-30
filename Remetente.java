@@ -49,9 +49,9 @@ public class Remetente {
 	private long timeSent, timeAcked, sampleRTT, estimatedRTT = 0, devRTT;
 	private int packetSample;
 	
-	private Timer msgSentTimer = new Timer();
-	private Timer delayedAckTimer = new Timer();
-	private Timer ackMeTimer = new Timer();
+	private Timer msgSentTimer = new Timer(true); // quero que sejam daemons e não impeçam ngm
+	private Timer delayedAckTimer = new Timer(true);
+	private Timer ackMeTimer = new Timer(true);
 	
 	private AckMePls testeAckMeTimerTask = new AckMePls();
 	private DelayedAckTimeOut testeDelayedAckTimerTask = new DelayedAckTimeOut();
@@ -87,6 +87,8 @@ public class Remetente {
 
 			tRecebe = new Thread(new RecebeDados());
 			tEnvia = new Thread(new EnviaDados());
+//			tEnvia.setDaemon(true);
+//			tRecebe.setDaemon(true);
 			tEnvia.start();
 			tRecebe.start();
 			// ACTIVE OPEN
@@ -107,6 +109,8 @@ public class Remetente {
 			this.remotePort = remotePort;
 			tRecebe = new Thread(new RecebeDados());
 			tEnvia = new Thread(new EnviaDados());
+//			tEnvia.setDaemon(true);
+//			tRecebe.setDaemon(true);
 			tEnvia.start();
 			tRecebe.start();
 			System.out.println("comecei as threads");
@@ -199,19 +203,18 @@ public class Remetente {
 					e.printStackTrace();
 				}
 			}
-//		}
-		System.out.println("Vou tentar dar o pacote " + rcvBase + " para a aplicação");
-		byte[] temp = testeRcvBuffer[circulariza(rcvBase)].getData();
-		for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[circulariza(rcvBase)].getLength(); i++, j++) {
-			data[i] =  temp[j];
-			b++;
-		}
-		System.out.println("Mandei pra aplicação o pacote " + rcvBase);
-			testeRcvBufferEstado[circulariza(rcvBase)] = false;
-		rcvBase += 1;
-		testeRcvBuffer.notifyAll(); 
-		// avisa pois pode ter uma thread esperando pra poder receber mais coisa,
-		// esse método libera espaço no testercvbuffer
+			System.out.println("Vou tentar dar o pacote " + rcvBase + " para a aplicação");
+			byte[] temp = testeRcvBuffer[circulariza(rcvBase)].getData();
+			for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[circulariza(rcvBase)].getLength(); i++, j++) {
+				data[i] =  temp[j];
+				b++;
+			}
+			System.out.println("Mandei pra aplicação o pacote " + rcvBase);
+				testeRcvBufferEstado[circulariza(rcvBase)] = false;
+			rcvBase += 1;
+			testeRcvBuffer.notifyAll(); 
+			// avisa pois pode ter uma thread esperando pra poder receber mais coisa,
+			// esse método libera espaço no testercvbuffer
 		}
 		return b;
 	}
@@ -229,7 +232,9 @@ public class Remetente {
 			teste1 = ("oi" + i).getBytes("UTF-8");
 			teste.send(teste1, 6);
 		}
-
+		System.out.println("Fim");
+		teste.close();
+		System.out.println("Enquanto fecha eu posso continuar fazendo coisas");
 	}
 	
 	public String getEstado() {
@@ -282,12 +287,55 @@ public class Remetente {
 	}
 	
 	public void close() {
-		this.close = true;
-		tEnvia.interrupt();
-		tRecebe.interrupt();
-//		tEnvia.join();
-//		tRecebe.join();
-		this.socket.close();
+		(new Thread(new ClosesStuff())).start();
+//		int i = 0;
+//		while (sendBase != nextSeqNum || rcvBase != ackNum) {
+//			if (i >= 480)
+//				break; // esperar até 4 minutos hehehe.
+//			try {
+//				Thread.sleep(500);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//				break;
+//			}
+//			i++;
+//		}
+//		this.close = true;
+//		ackMeTimer.cancel();
+//		delayedAckTimer.cancel();
+//		msgSentTimer.cancel();
+//		tEnvia.interrupt();
+//		tRecebe.interrupt();
+////		tEnvia.join();
+////		tRecebe.join();
+//		this.socket.close();
+	}
+	
+	class ClosesStuff implements Runnable {
+		public void run() {
+			int i = 0;
+			while (sendBase != nextSeqNum || rcvBase != ackNum) {
+				if (i >= 480)
+					break; // esperar até 4 minutos hehehe.
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					break;
+				}
+				i++;
+			}
+			close = true;
+			ackMeTimer.cancel();
+			delayedAckTimer.cancel();
+			msgSentTimer.cancel();
+			tEnvia.interrupt();
+			tRecebe.interrupt();
+//			tEnvia.join();
+//			tRecebe.join();
+			socket.close();
+		}
 	}
 	
 	class EnviaDados implements Runnable {
@@ -317,7 +365,9 @@ public class Remetente {
 							System.out.println("Saí da espera no testeSendBuffer, sendWindowSize: " + sendWindowSize);
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
+							System.out.println("Caught it");
 							e.printStackTrace();
+							return;
 						}
 					}
 					// se chegou aqui quer dizer que tem coisa no sendBuffer para enviar
@@ -378,6 +428,7 @@ public class Remetente {
 					}
 				}
 			}
+			System.out.println("Terminei EnviaDados");
 		}
 	}
 	
@@ -1009,6 +1060,7 @@ public class Remetente {
 				if (rcvwnd < 0 || sendWindowSize > 500)
 					System.exit(0);
 			}
+			System.out.println("Terminei RecebeDados");
 		}
 		
 	}

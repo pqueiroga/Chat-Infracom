@@ -33,7 +33,7 @@ public class DGServerSocket {
 		data = new byte[1024];
 		for (int i = 1000; i < 10000; i++) {
 			teste2.receive(data, 6);
-			Thread.sleep(500);
+//			Thread.sleep(500);
 			teste3 = new String(data, 0, 6, "UTF-8");
 			nnteste.add(teste3);
 		}
@@ -47,6 +47,8 @@ public class DGServerSocket {
 			anterior = atual;
 		}
 		System.out.println(nnteste.toString());
+		teste2.close();
+		System.out.println("Enquanto fecha eu posso continuar fazendo as coisas");
 	}
 	
 	public Remetente accept() throws IOException {
