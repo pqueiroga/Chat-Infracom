@@ -1,4 +1,4 @@
-package rdt;
+package protocol;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -8,7 +8,7 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class Remetente {
+public class DGSocket {
 	
 	private double pDescartaAck = 0.025;
 	private double pDescartaPacote = 0.025;
@@ -59,18 +59,18 @@ public class Remetente {
 	
 	private Thread tEnvia, tRecebe;
 	
-	public Remetente(String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+	public DGSocket(String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
 		this(-1, remoteIP, remotePort, ESTADO, ackNum);
 	}
 	
-	public Remetente(String remoteIP, int remotePort) throws IOException {
+	public DGSocket(String remoteIP, int remotePort) throws IOException {
 		this(-1, remoteIP, remotePort, "CLOSED", 0);
 	}
-	public Remetente(int port, String remoteIP, int remotePort) throws IOException {
+	public DGSocket(int port, String remoteIP, int remotePort) throws IOException {
 		this(port, remoteIP, remotePort, "CLOSED", 0);
 	}
 	
-	public Remetente(int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+	public DGSocket(int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
 		this.ESTADO = ESTADO;
 		byte[] data = new byte[1024];
 		this.nextSeqNum = this.sendBase = this.rcvBase = this.rcvLastAcked = 0; //new Random().nextInt(Integer.MAX_VALUE - 1);
@@ -220,7 +220,7 @@ public class Remetente {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		Remetente teste = new Remetente("localhost", 2020);
+		DGSocket teste = new DGSocket("localhost", 2020);
 		byte[] teste1 = "oi".getBytes("UTF-8");
 		System.out.println("Vou usar o send na main");
 		teste.send(teste1, teste1.length);
@@ -366,7 +366,7 @@ public class Remetente {
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							System.out.println("Caught it");
-							e.printStackTrace();
+//							e.printStackTrace();
 							return;
 						}
 					}
@@ -1055,7 +1055,9 @@ public class Remetente {
 					}
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
+					if (!close) {
+						e.printStackTrace();
+					}
 				}
 				if (rcvwnd < 0 || sendWindowSize > 500)
 					System.exit(0);
