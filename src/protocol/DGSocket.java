@@ -1,9 +1,12 @@
 package protocol;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.PortUnreachableException;
+import java.net.SocketException;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -12,6 +15,10 @@ public class DGSocket {
 	
 	private double pDescartaAck = 0.025;
 	private double pDescartaPacote = 0.025;
+	
+	private boolean portUnreachable = false;
+	private boolean connectionRefused = false;
+	private int timeoutTries = 0;
 	
 	Random random = new Random();
 	
@@ -43,7 +50,7 @@ public class DGSocket {
 	private int rcvLastAcked;
 	private DatagramSocket socket;
 	private int pktTimer, ackTimer; // diz qual pacote/ack está associado ao timer
-	private boolean close = false, msgTimerOn = false, ackTimerOn = false, ackMeTimerOn = false;
+	private boolean closed = false, msgTimerOn = false, ackTimerOn = false, ackMeTimerOn = false;
 	private long timeOutInterval = 1000;
 	private long timeOutRTT = 1000;
 	private long timeSent, timeAcked, sampleRTT, estimatedRTT = 0, devRTT;
@@ -87,8 +94,8 @@ public class DGSocket {
 
 			tRecebe = new Thread(new RecebeDados());
 			tEnvia = new Thread(new EnviaDados());
-//			tEnvia.setDaemon(true);
-//			tRecebe.setDaemon(true);
+			tEnvia.setDaemon(true);
+			tRecebe.setDaemon(true);
 			tEnvia.start();
 			tRecebe.start();
 			// ACTIVE OPEN
@@ -98,7 +105,7 @@ public class DGSocket {
 			
 			// recebe syn + ack
 			System.out.println("Vou receber syn + ack");
-				receive(data, 1024);
+			receive(data, 1024);
 			System.out.println("Logo depois de receber syn + ack no construtor");
 			break;
 		case "SYN RECEIVED":
@@ -109,8 +116,8 @@ public class DGSocket {
 			this.remotePort = remotePort;
 			tRecebe = new Thread(new RecebeDados());
 			tEnvia = new Thread(new EnviaDados());
-//			tEnvia.setDaemon(true);
-//			tRecebe.setDaemon(true);
+			tEnvia.setDaemon(true);
+			tRecebe.setDaemon(true);
 			tEnvia.start();
 			tRecebe.start();
 			System.out.println("comecei as threads");
@@ -122,6 +129,15 @@ public class DGSocket {
 	}
 	
 	public void send(byte[] data, int length, byte ack, byte syn, byte fin, byte ackMe) throws IOException {
+		if (ESTADO.equals("SYN SENT") && connectionRefused) {
+			throw new ConnectException("Connection refused (Connection refused)");
+		}
+		if (closed) {
+			throw new SocketException("DGSocket já está fechada.");
+		}
+		if (portUnreachable) {
+			throw new PortUnreachableException("Provavelmente o end host caiu");
+		}
 		System.out.println("Tentarei ganhar lock de testeSendBuffer no send");
 		synchronized (this.testeSendBuffer) {
 			if (Math.abs(this.sendBase - this.nextSeqNum) >= RcvBufferSize) {
@@ -133,6 +149,15 @@ public class DGSocket {
 					System.out.println("APLICAÇÃO ESPERANDO POIS NÃO PODE COLOCAR MAIS NADA NO SEND BUFFER!");
 					this.testeSendBuffer.notifyAll(); // avisa pra caso a envia dados esteja parada
 					this.testeSendBuffer.wait();
+					if (ESTADO.equals("SYN SENT") && connectionRefused) {
+						throw new ConnectException("Connection refused (Connection refused)");
+					}
+					if (closed) {
+						throw new SocketException("DGSocket já está fechada.");
+					}
+					if (portUnreachable) {
+						throw new PortUnreachableException("Provavelmente o end host caiu");
+					}
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -163,7 +188,16 @@ public class DGSocket {
 		send(data, length, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
 	}
 	
-	public int receive(byte[] data, int length) {
+	public int receive(byte[] data, int length) throws SocketException {
+		if (ESTADO.equals("SYN SENT") && connectionRefused) {
+			throw new ConnectException("Connection refused (Connection refused)");
+		}
+		if (closed) {
+			throw new SocketException("DGSocket já está fechada.");
+		}
+		if (portUnreachable) {
+			throw new PortUnreachableException("Provavelmente o end host caiu");
+		}
 		int b = 0;
 //		System.out.println("Tentarei ganhar lock no testeRcvBuffer em receive");
 //		synchronized (testeRcvBuffer) {
@@ -191,12 +225,23 @@ public class DGSocket {
 //		}
 		
 		synchronized (testeRcvBuffer) {
-//			System.out.println("Ganhei lock no testeRcvBuffer em receive");
+			System.out.println("Ganhei lock no testeRcvBuffer em receive");
 			while (rcvBase == ackNum) {
 				// pois não tem nenhum pacote ainda
 				try {
 					System.out.println("Estarei esperando por rcvBase != ackNum em receive");
 					testeRcvBuffer.wait();
+					System.out.println("portUnreachable: " + portUnreachable + 
+							"\nclosed: " + closed + "\nconnectionRefused: " + connectionRefused);
+					if (ESTADO.equals("SYN SENT") && connectionRefused) {
+						throw new ConnectException("Connection refused (Connection refused)");
+					}
+					if (portUnreachable) {
+						throw new PortUnreachableException("Provavelmente o end host caiu");
+					} 
+					if (closed) {
+						throw new SocketException("DGSocket já está fechada.");
+					}
 					System.out.println("Acabou a espera do testeRcvBuffer em receive");
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
@@ -239,6 +284,18 @@ public class DGSocket {
 	
 	public String getEstado() {
 		return this.ESTADO;
+	}
+	
+	public InetAddress getInetAddress() {
+		return this.remoteInetAddress;
+	}
+	
+	public int getPort() {
+		return this.remotePort;
+	}
+	
+	public boolean isClosed() {
+		return this.closed;
 	}
 	
 	private int circulariza(int index) {
@@ -286,8 +343,12 @@ public class DGSocket {
 		return lastPacketRcvd + 1;
 	}
 	
-	public void close() {
-		(new Thread(new ClosesStuff())).start();
+	public void close() throws IOException {
+		if (!closed) {
+			(new Thread(new ClosesStuff())).start();
+		} else {
+			throw new IOException("DGSocket já está fechada.");
+		}
 //		int i = 0;
 //		while (sendBase != nextSeqNum || rcvBase != ackNum) {
 //			if (i >= 480)
@@ -316,7 +377,7 @@ public class DGSocket {
 		public void run() {
 			int i = 0;
 			while (sendBase != nextSeqNum || rcvBase != ackNum) {
-				if (i >= 480)
+				if (i >= 480 || ESTADO.equals("SYN SENT"))
 					break; // esperar até 4 minutos hehehe.
 				try {
 					Thread.sleep(500);
@@ -326,10 +387,16 @@ public class DGSocket {
 				}
 				i++;
 			}
-			close = true;
+			synchronized (testeRcvBuffer) {
+				testeRcvBuffer.notifyAll();
+			}
+			synchronized (testeSendBuffer) {
+				testeSendBuffer.notifyAll();
+			}
 			ackMeTimer.cancel();
 			delayedAckTimer.cancel();
 			msgSentTimer.cancel();
+			closed = true;
 			tEnvia.interrupt();
 			tRecebe.interrupt();
 //			tEnvia.join();
@@ -340,7 +407,7 @@ public class DGSocket {
 	
 	class EnviaDados implements Runnable {
 		public void run() {
-			while (!close) {
+			while (!closed) {
 				synchronized (testeSendBuffer) {
 					while (!podeEnviar()) {
 						try {
@@ -394,6 +461,7 @@ public class DGSocket {
 								synchronized (msgSentTimer) {
 									if (!msgTimerOn) {// && enviou) {
 										pktTimer = sendBase;
+										timeoutTries = 0;
 										timeOutInterval = 500;//= timeOutRTT;
 										try {
 											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
@@ -423,6 +491,15 @@ public class DGSocket {
 								}
 							}
 						}
+					} catch (PortUnreachableException e1) {
+						portUnreachable = true;
+						try {
+							close();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						return;
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -481,6 +558,12 @@ public class DGSocket {
 	class MsgSentTimeOut extends TimerTask {
 		public void run() {
 			try {
+				if ((ESTADO.equals("SYN SENT") && timeoutTries > 2) || timeoutTries > 4) {
+					System.out.println("end host não responde.");
+					connectionRefused = true;
+					close();
+					return;
+				}
 				synchronized (msgSentTimer) {
 					System.out.println("Pacote " + pktTimer + " deu timeout.");
 					try {
@@ -506,6 +589,7 @@ public class DGSocket {
 							timeOutInterval = timeOutInterval << 1;
 						}
 						try {
+							timeoutTries++;
 							msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 						} catch (IllegalStateException e) {
 							testeMsgSentTimerTask.cancel();
@@ -564,7 +648,7 @@ public class DGSocket {
 	class RecebeDados implements Runnable {
 		
 		public void run() {
-			while (!close) {
+			while (!closed) {
 				try {
 					byte[] data = new byte[1024];
 					DatagramPacket dp = new DatagramPacket(data, data.length);
@@ -655,6 +739,7 @@ public class DGSocket {
 								if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 									pktTimer = peppa;
 									try {
+										timeoutTries = 0;
 										msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 									} catch (IllegalStateException e) {
 										testeMsgSentTimerTask.cancel();
@@ -691,6 +776,7 @@ public class DGSocket {
 								if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 									pktTimer = peppa;
 									try {
+										timeoutTries = 0;
 										msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 									} catch (IllegalStateException e) {
 										testeMsgSentTimerTask.cancel();
@@ -1001,6 +1087,7 @@ public class DGSocket {
 										pktTimer = peppa;
 										timeOutInterval = 500;//= timeOutRTT;
 										try {
+											timeoutTries = 0;
 											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 										} catch (IllegalStateException e) {
 											testeMsgSentTimerTask.cancel();
@@ -1039,6 +1126,7 @@ public class DGSocket {
 											pktTimer = getackNum(data);
 											timeOutInterval = 500;//= timeOutRTT;
 											try {
+												timeoutTries = 0;
 												msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 											} catch (IllegalStateException e) {
 												testeMsgSentTimerTask.cancel();
@@ -1053,9 +1141,18 @@ public class DGSocket {
 							}
 						}
 					}
+				} catch (PortUnreachableException e1) {
+					portUnreachable = true;
+					try {
+						close();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					return;
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
-					if (!close) {
+					if (!closed) {
 						e.printStackTrace();
 					}
 				}

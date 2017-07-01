@@ -1,10 +1,6 @@
 package utility.server;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
@@ -13,6 +9,8 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Map;
 
+import protocol.DGServerSocket;
+import protocol.DGSocket;
 import utility.buffer.BufferMethods;
 import utility.security.PasswordSecurity;
 
@@ -45,34 +43,39 @@ public class ServerAPI {
 	 * @throws GeneralSecurityException 
 	 */
 	public int cadastro(String username, String password) throws IOException, GeneralSecurityException {
-		Socket connectionSocket = null;
+		DGSocket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			
 			// cadastro(0), login(1)		
-			outToServer.write(0);
+//			outToServer.write(0);
+			BufferMethods.sendInt(0, connectionSocket);
 			
-			int bdOK = inFromServer.read();
+//			int bdOK = inFromServer.read();
+			int bdOK = BufferMethods.receiveFeedBack(connectionSocket);
 			
 			if (bdOK == 1) {
 				byte[] buffer = new byte[256];
 				
-				BufferMethods.writeString(username, outToServer);
+				BufferMethods.writeString(username, connectionSocket);
 				
 				// recebe o salt, que sempre tera 32 chars
-				inFromServer.read(buffer, 0, 32);
+//				inFromServer.read(buffer, 0, 32);
+				connectionSocket.receive(buffer, 32);
 				byte[] salt = PasswordSecurity.fromHex(BufferMethods.byteArraytoString(buffer, 32));
 				String nicepw = null;
 				nicepw = PasswordSecurity.generateStrongPasswordHash(password, salt).split(":")[2];
 				
 				// envia a senha criptografada
 				BufferMethods.toByteArray(buffer, nicepw);
-				outToServer.write(buffer, 0, 128);
+//				outToServer.write(buffer, 0, 128);
+				connectionSocket.send(buffer, 128);
 				// recebe do servidor status do cadastro (sucesso ou falha)
-				int codigo = inFromServer.read();
+//				int codigo = inFromServer.read();
+				int codigo = BufferMethods.receiveFeedBack(connectionSocket);
 				connectionSocket.close();
 				return codigo;
 			} else {
@@ -109,66 +112,72 @@ public class ServerAPI {
 	 * @throws UnknownHostException
 	 * @throws IOException
 	 */
-	public Map.Entry<ArrayList<ServerSocket>, Integer> login(String username, String password)
+	public Map.Entry<ArrayList<DGServerSocket>, Integer> login(String username, String password)
 			throws GeneralSecurityException, IOException {
-		ArrayList<ServerSocket> returnSocket = new ArrayList<ServerSocket>();
-		Socket connectionSocket = null;
+		ArrayList<DGServerSocket> returnSocket = new ArrayList<DGServerSocket>();
+		DGSocket connectionSocket = null;
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+			System.out.println("Consegui uma connectionsocket pra falar com o server");
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			// cadastro(0), login(1)		
-			outToServer.write(1);
+//			outToServer.write(1);
+			BufferMethods.sendInt(1, connectionSocket);
 			
-			int bdOK = inFromServer.read();
+//			int bdOK = inFromServer.read();
+			int bdOK = BufferMethods.receiveFeedBack(connectionSocket);
 			
 			if (bdOK == 1) {
 				byte[] buffer1 = new byte[256];
 				
-				BufferMethods.writeString(username, outToServer);
+				BufferMethods.writeString(username, connectionSocket);
 				
 				// recebe o salt, que sempre tera 32 chars
-				inFromServer.read(buffer1, 0, 32);
+//				inFromServer.read(buffer1, 0, 32);
+				connectionSocket.receive(buffer1, 32);
 				byte[] salt = PasswordSecurity.fromHex(BufferMethods.byteArraytoString(buffer1, 32));
 				String nicepw = null;
 				nicepw = PasswordSecurity.generateStrongPasswordHash(password, salt).split(":")[2];
 				
 				// envia a senha criptografada
 				BufferMethods.toByteArray(buffer1, nicepw);
-				outToServer.write(buffer1, 0, 128);
+//				outToServer.write(buffer1, 0, 128);
+				connectionSocket.send(buffer1, 128);
 				// recebe do servidor status do login (sucesso ou falha)
-				status = inFromServer.read();
+//				status = inFromServer.read();
+				status = BufferMethods.receiveFeedBack(connectionSocket);
 				
 				// agora checamos se acertamos as credenciais, se acertamos então podemos criar uma ServerSocket
 				// e dar essa porta pro servidor constatar que estamos online e podemos receber por essa porta.
 				int portaDaSessao = 2030;
 				if (status == 1) {
 					while (returnSocket.size() != 6 && portaDaSessao < 65525) {
-						ServerSocket temp1 = null;
-						ServerSocket temp2 = null;
-						ServerSocket temp3 = null;
-						ServerSocket temp4 = null;
-						ServerSocket temp5 = null;
-						ServerSocket temp6 = null;
+						DGServerSocket temp1 = null;
+						DGServerSocket temp2 = null;
+						DGServerSocket temp3 = null;
+						DGServerSocket temp4 = null;
+						DGServerSocket temp5 = null;
+						DGServerSocket temp6 = null;
 						try {
-							temp1 = new ServerSocket(portaDaSessao);
+							temp1 = new DGServerSocket(portaDaSessao);
 							returnSocket.add(temp1); // chat
 							portaDaSessao++;
-							temp2 = new ServerSocket(portaDaSessao);
+							temp2 = new DGServerSocket(portaDaSessao);
 							returnSocket.add(temp2); // transferencia
 							portaDaSessao++;
-							temp3 = new ServerSocket(portaDaSessao);
+							temp3 = new DGServerSocket(portaDaSessao);
 							returnSocket.add(temp3); // rtt
 							portaDaSessao++;
-							temp4 = new ServerSocket(portaDaSessao);
+							temp4 = new DGServerSocket(portaDaSessao);
 							returnSocket.add(temp4); // lista de amigos
 							portaDaSessao++;
-							temp5 = new ServerSocket(portaDaSessao);
+							temp5 = new DGServerSocket(portaDaSessao);
 							returnSocket.add(temp5); // solicitação de amizade
 							portaDaSessao++;
-							temp6 = new ServerSocket(portaDaSessao);
+							temp6 = new DGServerSocket(portaDaSessao);
 							returnSocket.add(temp6); // ping
 						} catch (IOException e) {
 							returnSocket.clear();
@@ -193,21 +202,20 @@ public class ServerAPI {
 					}
 					if (!returnSocket.isEmpty()) {
 						// diz que conseguiu um servidor
-						outToServer.write(1);
-						byte[] buffer = new byte[256];
-						BufferMethods.toByteArray(buffer, returnSocket.get(0).getLocalPort());
+//						outToServer.write(1);
+						BufferMethods.sendFeedBack(1, connectionSocket);
+//						byte[] buffer = new byte[256];
+//						BufferMethods.toByteArray(buffer, returnSocket.get(0).getLocalPort());
 						// envia número de porta
-						outToServer.write(buffer, 0, 5);
+//						outToServer.write(buffer, 0, 5);
+						BufferMethods.sendInt(returnSocket.get(0).getLocalPort(), connectionSocket);
 					} else {
 						status = -1;
-						outToServer.write(0);
+//						outToServer.write(0);
+						BufferMethods.sendFeedBack(0, connectionSocket);
 					}
 				}
 			}	
-		} catch (IOException e) {
-			throw e;
-		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-			throw e;
 		} finally {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
@@ -219,7 +227,7 @@ public class ServerAPI {
 				}
 			}
 		}
-		return new AbstractMap.SimpleEntry<ArrayList<ServerSocket>, Integer>(returnSocket, new Integer(status));
+		return new AbstractMap.SimpleEntry<ArrayList<DGServerSocket>, Integer>(returnSocket, new Integer(status));
 	}
 	
 	/**
@@ -237,29 +245,33 @@ public class ServerAPI {
 	 */
 	public int login(String username, int chatPort)
 			throws GeneralSecurityException, IOException {
-		Socket connectionSocket = null;
+		DGSocket connectionSocket = null;
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			// cadastro(0), login(1)		
-			outToServer.write(11);
+//			outToServer.write(11);
+			BufferMethods.sendInt(11, connectionSocket);
 			
-			int bdOK = inFromServer.read();
+//			int bdOK = inFromServer.read();
+			int bdOK = BufferMethods.receiveFeedBack(connectionSocket);
 			
 			if (bdOK == 1) {				
-				BufferMethods.writeString(username, outToServer);
+				BufferMethods.writeString(username, connectionSocket);
 				
 				// recebe do servidor status do login (sucesso ou falha)
-				status = inFromServer.read();
+//				status = inFromServer.read();
+				status = BufferMethods.receiveFeedBack(connectionSocket);
 				
 				if (status == 1) {
-					byte[] buffer = new byte[256];
-					BufferMethods.toByteArray(buffer, chatPort);
+//					byte[] buffer = new byte[256];
+//					BufferMethods.toByteArray(buffer, chatPort);
 					// envia número de porta
-					outToServer.write(buffer, 0, 5);
+//					outToServer.write(buffer, 0, 5);
+					BufferMethods.sendInt(chatPort, connectionSocket);
 				}
 			}	
 		} catch (IOException e) {
@@ -285,20 +297,21 @@ public class ServerAPI {
 	 * @throws IOException 
 	 */
 	public boolean logout(String username) throws IOException {
-		Socket connectionSocket = null;
+		DGSocket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			
 			// diz que quer logout
-			outToServer.write(2);
+//			outToServer.write(2);
+			BufferMethods.sendInt(2, connectionSocket);
 			
 			// envia o nome de usuario
-			BufferMethods.writeString(username, outToServer);
+			BufferMethods.writeString(username, connectionSocket);
 			
-			if (inFromServer.read() == 1) {
+			if (BufferMethods.receiveFeedBack(connectionSocket) == 1) {
 				return true;
 			} else {
 				return false;
@@ -327,17 +340,19 @@ public class ServerAPI {
 	 */
 	public ArrayList<String> pegaOnlines() throws IOException {
 		ArrayList<String> retorno = new ArrayList<String>();
-		Socket connectionSocket = null;
+		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			
-			outToServer.write(3);
+//			outToServer.write(3);
+			BufferMethods.sendInt(3, connectionSocket);
 			
-			int listSize = inFromServer.read();
+//			int listSize = inFromServer.read();
+			int listSize = BufferMethods.receiveInt(connectionSocket);
 			for (int i = 0; i < listSize; i++) {
-				retorno.add(BufferMethods.readString(inFromServer));
+				retorno.add(BufferMethods.readString(connectionSocket));
 			}
 		} catch (IOException e) {
 			throw e;
@@ -367,19 +382,22 @@ public class ServerAPI {
 	 * @throws IOException 
 	 */
 	public int solicitaAmizade(String user, String friend) throws IOException {
-		Socket connectionSocket = null;
+		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			
-			outToServer.write(4); // diz que quer solicitar amizade
+//			outToServer.write(4); // diz que quer solicitar amizade
+			BufferMethods.sendInt(4, connectionSocket);
 			
-			int bdOK = inFromServer.read();
+//			int bdOK = inFromServer.read();
+			int bdOK = BufferMethods.receiveFeedBack(connectionSocket);
 			if (bdOK == 1) {
-				BufferMethods.writeString(user, outToServer);
-				BufferMethods.writeString(friend, outToServer);
-				int status = inFromServer.read();
+				BufferMethods.writeString(user, connectionSocket);
+				BufferMethods.writeString(friend, connectionSocket);
+//				int status = inFromServer.read();
+				int status = BufferMethods.receiveFeedBack(connectionSocket);
 				return status;
 			} else {
 				return -1;
@@ -472,19 +490,22 @@ public class ServerAPI {
 	 */
 	private ArrayList<String> listaSolicitacaoAmigos(String user, int op) throws IOException {
 		ArrayList<String> retorno = new ArrayList<String>();
-		Socket connectionSocket = null;
+		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			
-			outToServer.write(op);
-			int bdOK = inFromServer.read();
+//			outToServer.write(op);
+			BufferMethods.sendInt(op, connectionSocket);
+//			int bdOK = inFromServer.read();
+			int bdOK = BufferMethods.receiveFeedBack(connectionSocket);
 			if (bdOK == 1) {
-				BufferMethods.writeString(user, outToServer);
-				int listSize = inFromServer.read();
+				BufferMethods.writeString(user, connectionSocket);
+//				int listSize = inFromServer.read();
+				int listSize = BufferMethods.receiveInt(connectionSocket);
 				for (int i = 0; i < listSize; i++) {
-					retorno.add(BufferMethods.readString(inFromServer));
+					retorno.add(BufferMethods.readString(connectionSocket));
 				}
 			}			
 		} catch (IOException e) {
@@ -510,19 +531,22 @@ public class ServerAPI {
 	 * @throws IOException
 	 */
 	private int aceitaRecusaAmizade(String user, String friend, int op) throws IOException {
-		Socket connectionSocket = null;
+		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new Socket(this.ip, this.port);
-			OutputStream outToServer = connectionSocket.getOutputStream();
-			InputStream inFromServer = connectionSocket.getInputStream();
+			connectionSocket = new DGSocket(this.ip, this.port);
+//			OutputStream outToServer = connectionSocket.getOutputStream();
+//			InputStream inFromServer = connectionSocket.getInputStream();
 			
-			outToServer.write(op); // diz que quer recusar amizade
+//			outToServer.write(op); // diz que quer recusar amizade
+			BufferMethods.sendInt(op, connectionSocket);
 			
-			int bdOK = inFromServer.read();
+//			int bdOK = inFromServer.read();
+			int bdOK = BufferMethods.receiveFeedBack(connectionSocket);
 			if (bdOK == 1) {
-				BufferMethods.writeString(user, outToServer);
-				BufferMethods.writeString(friend, outToServer);
-				return inFromServer.read();
+				BufferMethods.writeString(user, connectionSocket);
+				BufferMethods.writeString(friend, connectionSocket);
+//				return inFromServer.read();
+				return BufferMethods.receiveFeedBack(connectionSocket);
 			} else {
 				return -1; 
 			}

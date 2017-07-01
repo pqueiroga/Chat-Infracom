@@ -1,11 +1,7 @@
 package utility.arrays;
 
-import java.util.Arrays;
-
-//import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
-
 /**
- * Classe com métodos para facilitar operações sobre arrays do projeto.
+ * Classe com mï¿½todos para facilitar operaï¿½ï¿½es sobre arrays do projeto.
  * @author Gabriel Barbosa
  */
 public class ArrayMethods {
@@ -41,9 +37,9 @@ public class ArrayMethods {
 	
 	/**
 	 * Prefixa array de bytes com um byte especificado.
-	 * @param a Byte a ser adicionado à frente do array.
+	 * @param a Byte a ser adicionado ï¿½ frente do array.
 	 * @param b Array a ser prefixado com byte.
-	 * @return Array com novo byte ao início.
+	 * @return Array com novo byte ao inï¿½cio.
 	 */
 	public static byte[] concatenateByteArrays(byte a, byte[] b) {
 		byte[] ab = new byte[b.length + 1];
@@ -56,7 +52,7 @@ public class ArrayMethods {
 	
 	/**
 	 * Destaca subarray de um array de bytes fornecidos.
-	 * @param array Array de que se destacará subarray.
+	 * @param array Array de que se destacarï¿½ subarray.
 	 * @param len Tamanho do subarray.
 	 * @param offset Ponto inicial do destaque do array.
 	 * @return Subarray do array especificado.

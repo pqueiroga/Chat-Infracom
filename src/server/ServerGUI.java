@@ -13,10 +13,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.BindException;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -31,6 +28,8 @@ import javax.swing.JTextPane;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
 
+import protocol.DGServerSocket;
+
 /**
  * Janela do servidor
  * @author Pedro Queiroga <psq@cin.ufpe.br>
@@ -38,10 +37,14 @@ import javax.swing.border.EmptyBorder;
  */
 public class ServerGUI extends JFrame {
 
+	/**
+	 * sei lá
+	 */
+	private static final long serialVersionUID = -2300047174303145972L;
 	private JPanel contentPane;
 	private JTextField txtPorta;
 	ArrayList<String> listaDeUsuarios;
-	private ServerSocket wSocket;
+	private DGServerSocket wSocket;
 
 	/**
 	 * Launch the application.
@@ -123,7 +126,7 @@ public class ServerGUI extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				try {
 					int port = Integer.parseInt(txtPorta.getText());
-					wSocket = new ServerSocket(port);
+					wSocket = new DGServerSocket(port);
 					(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 					(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
 					setTitle("Funcionando na porta " + port);
@@ -147,7 +150,7 @@ public class ServerGUI extends JFrame {
 				if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
 					try {
 						int port = Integer.parseInt(txtPorta.getText());
-						wSocket = new ServerSocket(port);
+						wSocket = new DGServerSocket(port);
 						(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 						(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
 						setTitle("Funcionando na porta " + port);

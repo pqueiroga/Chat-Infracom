@@ -29,6 +29,10 @@ import java.awt.event.FocusEvent;
 
 public class AddRemoveAmigoDialog extends JDialog {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -2192680467119389610L;
 	private final JPanel contentPanel = new JPanel();
 	private JTextField textFieldFriend;
 	

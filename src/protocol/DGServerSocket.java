@@ -11,6 +11,7 @@ public class DGServerSocket {
 	private int headerLength = 14;
 	private int ackNum;
 	private DatagramSocket socket;
+	private boolean closed;
 	
 	public DGServerSocket(int port) throws SocketException {
 		this.socket = new DatagramSocket(port);
@@ -69,6 +70,11 @@ public class DGServerSocket {
 
 		return retorno2;
 	}
+	
+	public void close() throws SocketException {
+		this.socket.close();
+		this.closed = true;
+	}
 		
 	private int getSeqNum(byte[] data) {
 		return (int) (data[0] << 24) + (int) (data[1] << 16) + (int) (data[2] << 8) + (int) data[3];
@@ -80,5 +86,13 @@ public class DGServerSocket {
 		} catch (Exception e) {
 			return false;
 		}
+	}
+
+	public int getLocalPort() {
+		return this.socket.getLocalPort();
+	}
+	
+	public boolean isClosed() {
+		return this.closed;
 	}
 }

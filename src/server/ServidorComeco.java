@@ -1,12 +1,12 @@
 package server;
 
 import java.io.IOException;
-import java.net.BindException;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import protocol.DGServerSocket;
+import protocol.DGSocket;
 
 /**
  * Classe que roda o servidor deste servico na porta "bem conhecida".
@@ -15,9 +15,9 @@ import java.util.Map;
  */
 public class ServidorComeco implements Runnable {
 	ArrayList<String> listaDeUsuarios;
-	ServerSocket servidor;
+	DGServerSocket servidor;
 	
-	public ServidorComeco(ArrayList<String> listaDeUsuarios, ServerSocket wSocket) {
+	public ServidorComeco(ArrayList<String> listaDeUsuarios, DGServerSocket wSocket) {
 		this.listaDeUsuarios = listaDeUsuarios;
 		this.servidor = wSocket;
 	}
@@ -30,24 +30,24 @@ public class ServidorComeco implements Runnable {
 //				fw.write(0 + "\n");
 //				fw.close();
 //			}
-			Map<String, Long> timer = new HashMap<String, Long>();
+			ConcurrentMap<String, Long> timer = new ConcurrentHashMap<String, Long>();
 			(new Thread(new TimeOutThread(timer))).start();
 			while (true) {
-				Socket connectionSocket = servidor.accept();
+				DGSocket connectionSocket = servidor.accept();
 				(new Thread(new ServidorConta(timer,
 						connectionSocket, listaDeUsuarios))).start();
 			}
 		} catch (IOException e) {
 			System.err.println("ERRO: Erro desconhecido ao aceitar conexão.");
 			e.printStackTrace();
-		} finally {
-		}
+		}// finally {
+//		}
 	}
 	
 	class TimeOutThread implements Runnable {
-		private Map<String, Long> timer;
+		private ConcurrentMap<String, Long> timer;
 		
-		public TimeOutThread(Map<String, Long> timer) {
+		public TimeOutThread(ConcurrentMap<String, Long> timer) {
 			this.timer = timer;
 		}
 		
@@ -56,7 +56,7 @@ public class ServidorComeco implements Runnable {
 			while (true) {
 				synchronized (timer) {
 					newTime = System.currentTimeMillis();
-					for (Map.Entry<String, Long> entry : timer.entrySet()) {
+					for (ConcurrentMap.Entry<String, Long> entry : timer.entrySet()) {
 						if (newTime - entry.getValue().longValue() > 25000) {
 							synchronized (listaDeUsuarios) {
 								int pos = usuarioListaOnline(listaDeUsuarios, entry.getKey());

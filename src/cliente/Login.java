@@ -14,7 +14,6 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.net.ConnectException;
-import java.net.ServerSocket;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Map;
@@ -28,16 +27,33 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
+import protocol.DGServerSocket;
 import utility.server.ServerAPI;
 
 public class Login extends JFrame {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -662516472107674260L;
 	private ServerAPI toServer;
 	private JPanel contentPane;
 	private JTextField usrTextField;
 	private JPasswordField passwordField;
 	private JTextField txtIp;
 	private JTextField txtPort;
-
+	private JLabel lblNotbroken;
+	private boolean notBrokenFinished = false;
+	private JButton btnLogin;
+	private JLabel lblUsername;
+	private JLabel lblUsrInfo;
+	private JLabel lblPassword;
+	private JLabel lblPwInfo;
+	private JLabel lblServ;
+	private JLabel lblPorta;
+	private JLabel lblIpinfo;
+	private JLabel lblPortinfo;
+	private JButton btnCadastro;
+	
 	/**
 	 * Launch the application.
 	 */
@@ -73,6 +89,7 @@ public class Login extends JFrame {
 			break;
 		case 5:
 			cor = Color.LIGHT_GRAY;
+			break;
 		case 6:
 			cor = Color.MAGENTA;
 			break;
@@ -84,6 +101,7 @@ public class Login extends JFrame {
 			break;
 		case 9:
 			cor = Color.YELLOW;
+			break;
 		default:
 			cor = null;	
 		}
@@ -97,12 +115,12 @@ public class Login extends JFrame {
 		setContentPane(contentPane);
 		GridBagLayout gbl_contentPane = new GridBagLayout();
 		gbl_contentPane.columnWidths = new int[]{5, 80, 80, 80, 80, 5};
-		gbl_contentPane.rowHeights = new int[]{31, 17, 0, 23, 0, 0, 23, 0, 0, 23, 0, 0};
+		gbl_contentPane.rowHeights = new int[]{31, 17, 0, 23, 0, 0, 23, 0, 0, 23, 0, 12, 0};
 		gbl_contentPane.columnWeights = new double[]{0.0, 1.0, 0.0, 1.0, 1.0, 0.0};
-		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
+		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		contentPane.setLayout(gbl_contentPane);
 		
-		JLabel lblUsername = new JLabel("Usuário");
+		lblUsername = new JLabel("Usuário");
 		lblUsername.setFont(new Font("Arial", Font.BOLD, 14));
 		GridBagConstraints gbc_lblUsername = new GridBagConstraints();
 		gbc_lblUsername.gridwidth = 4;
@@ -122,7 +140,7 @@ public class Login extends JFrame {
 		contentPane.add(usrTextField, gbc_usrTextField);
 		usrTextField.setColumns(10);
 		
-		JLabel lblUsrInfo = new JLabel("");
+		lblUsrInfo = new JLabel("");
 		lblUsrInfo.setForeground(Color.RED);
 		lblUsrInfo.setFont(new Font("Dialog", Font.BOLD, 10));
 		GridBagConstraints gbc_lblUsrInfo = new GridBagConstraints();
@@ -133,7 +151,7 @@ public class Login extends JFrame {
 		gbc_lblUsrInfo.gridy = 3;
 		contentPane.add(lblUsrInfo, gbc_lblUsrInfo);
 		
-		JLabel lblPassword = new JLabel("Senha");
+		lblPassword = new JLabel("Senha");
 		lblPassword.setFont(new Font("Arial", Font.BOLD, 14));
 		GridBagConstraints gbc_lblPassword = new GridBagConstraints();
 		gbc_lblPassword.gridwidth = 4;
@@ -153,7 +171,7 @@ public class Login extends JFrame {
 		gbc_passwordField.gridy = 5;
 		contentPane.add(passwordField, gbc_passwordField);
 		
-		JLabel lblPwInfo = new JLabel("");
+		lblPwInfo = new JLabel("");
 		lblPwInfo.setForeground(Color.RED);
 		lblPwInfo.setFont(new Font("Dialog", Font.BOLD, 10));
 		GridBagConstraints gbc_lblPwInfo = new GridBagConstraints();
@@ -164,7 +182,7 @@ public class Login extends JFrame {
 		gbc_lblPwInfo.gridy = 6;
 		contentPane.add(lblPwInfo, gbc_lblPwInfo);
 		
-		JLabel lblServ = new JLabel("IP");
+		lblServ = new JLabel("IP");
 		GridBagConstraints gbc_lblServ = new GridBagConstraints();
 		gbc_lblServ.anchor = GridBagConstraints.WEST;
 		gbc_lblServ.gridwidth = 2;
@@ -173,7 +191,7 @@ public class Login extends JFrame {
 		gbc_lblServ.gridy = 7;
 		contentPane.add(lblServ, gbc_lblServ);
 		
-		JLabel lblPorta = new JLabel("Porta");
+		lblPorta = new JLabel("Porta");
 		GridBagConstraints gbc_lblPorta = new GridBagConstraints();
 		gbc_lblPorta.anchor = GridBagConstraints.WEST;
 		gbc_lblPorta.insets = new Insets(0, 0, 5, 5);
@@ -200,7 +218,7 @@ public class Login extends JFrame {
 		contentPane.add(txtPort, gbc_txtPort);
 		txtPort.setColumns(10);
 		
-		JLabel lblIpinfo = new JLabel("");
+		lblIpinfo = new JLabel("");
 		lblIpinfo.setForeground(Color.RED);
 		lblIpinfo.setFont(new Font("Dialog", Font.BOLD, 10));
 		GridBagConstraints gbc_lblIpinfo = new GridBagConstraints();
@@ -211,7 +229,7 @@ public class Login extends JFrame {
 		gbc_lblIpinfo.gridy = 9;
 		contentPane.add(lblIpinfo, gbc_lblIpinfo);
 		
-		JLabel lblPortinfo = new JLabel("");
+		lblPortinfo = new JLabel("");
 		lblPortinfo.setForeground(Color.RED);
 		lblPortinfo.setFont(new Font("Dialog", Font.BOLD, 10));
 		GridBagConstraints gbc_lblPortinfo = new GridBagConstraints();
@@ -222,73 +240,98 @@ public class Login extends JFrame {
 		gbc_lblPortinfo.gridy = 9;
 		contentPane.add(lblPortinfo, gbc_lblPortinfo);
 		
-		JButton btnCadastro = new JButton("Cadastrar");
+		btnCadastro = new JButton("Cadastrar");
 		GridBagConstraints gbc_btnCadastro = new GridBagConstraints();
 		gbc_btnCadastro.gridwidth = 2;
 		gbc_btnCadastro.fill = GridBagConstraints.BOTH;
-		gbc_btnCadastro.insets = new Insets(0, 0, 0, 5);
+		gbc_btnCadastro.insets = new Insets(0, 0, 5, 5);
 		gbc_btnCadastro.gridx = 1;
 		gbc_btnCadastro.gridy = 10;
 		contentPane.add(btnCadastro, gbc_btnCadastro);
 		
-		JButton btnLogin = new JButton("Entrar");
+		btnLogin = new JButton("Entrar");
 		GridBagConstraints gbc_btnLogin = new GridBagConstraints();
-		gbc_btnLogin.insets = new Insets(0, 0, 0, 5);
+		gbc_btnLogin.insets = new Insets(0, 0, 5, 5);
 		gbc_btnLogin.gridwidth = 2;
 		gbc_btnLogin.fill = GridBagConstraints.BOTH;
 		gbc_btnLogin.gridx = 3;
 		gbc_btnLogin.gridy = 10;
 		contentPane.add(btnLogin, gbc_btnLogin);
+		
+		lblNotbroken = new JLabel("     ");
+		GridBagConstraints gbc_lblNotbroken = new GridBagConstraints();
+		gbc_lblNotbroken.anchor = GridBagConstraints.SOUTHWEST;
+		gbc_lblNotbroken.gridwidth = 4;
+		gbc_lblNotbroken.insets = new Insets(0, 0, 0, 5);
+		gbc_lblNotbroken.gridx = 1;
+		gbc_lblNotbroken.gridy = 11;
+		contentPane.add(lblNotbroken, gbc_lblNotbroken);
 		btnLogin.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				usrTextField.setEnabled(false);
 				passwordField.setEnabled(false);
+				btnCadastro.setEnabled(false);
+				btnLogin.setEnabled(false);
+				txtIp.setEnabled(false);
+				txtPort.setEnabled(false);
 				String usrOk = validaUsr(usrTextField.getText());
 				String pwOk = validaPw(new String(passwordField.getPassword()));
 				String ipOk = validaIp(txtIp.getText());
 				String portOk = validaPort(txtPort.getText());
 				if (usrOk.isEmpty() && pwOk.isEmpty() && ipOk.isEmpty() && portOk.isEmpty()) {
-					try {
-						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
-						Map.Entry<ArrayList<ServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
-						int status = mp.getValue().intValue();
-						if (status == 1) {
-							// TODO lembrar de mudar p o nosso protocolo
-							// TODO fazer Profile aceitar os 6 ServerSockets
-							Profile p = new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
-							p.setVisible(true);
-							setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
-							lblUsrInfo.setForeground(Color.GREEN);
-							lblUsrInfo.setText("Login efetuado com sucesso"); // esse daqui nunca vai ser visto
-						} else if (status == 2) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Usuário já está online");
-						} else if (status == 0) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Usuário ou senha incorretos");
-						} else if (status == -1) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Não conseguimos portas livres");
-						}
-					} catch (ConnectException e1) {
-						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
-						}
-					}catch (Exception e1) {
-						lblUsrInfo.setForeground(Color.RED);
-						lblUsrInfo.setText("Erro tosco durante o login");
-						e1.printStackTrace();
-					}
+					(new Thread(new loga())).start();
+//					try {
+//						notBrokenFinished = false;
+////						(new Thread(new naoQuebrou())).start();
+//						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
+//						Map.Entry<ArrayList<DGServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
+//						notBrokenFinished = true;
+//						int status = mp.getValue().intValue();
+//						if (status == 1) {
+//							Profile p = new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
+//							p.setVisible(true);
+//							setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
+//							lblUsrInfo.setForeground(Color.GREEN);
+//							lblUsrInfo.setText("Login efetuado com sucesso"); // esse daqui nunca vai ser visto
+//						} else if (status == 2) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Usuário já está online");
+//						} else if (status == 0) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Usuário ou senha incorretos");
+//						} else if (status == -1) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Não conseguimos portas livres");
+//						}
+//					} catch (ConnectException e1) {
+//						notBrokenFinished = true;
+//						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
+//						}
+//					} catch (Exception e1) {
+//						notBrokenFinished = true;
+//						lblUsrInfo.setForeground(Color.RED);
+//						lblUsrInfo.setText("Erro tosco durante o login");
+//						e1.printStackTrace();
+//					}
 				} else {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText(usrOk);
 					lblPwInfo.setText(pwOk);
 					lblPortinfo.setText(portOk);
 					lblIpinfo.setText(ipOk);
+					usrTextField.setEnabled(true);
+					passwordField.setEnabled(true);
+					btnCadastro.setEnabled(true);
+					btnLogin.setEnabled(true);
+					txtIp.setEnabled(true);
+					txtPort.setEnabled(true);
 				}
-				usrTextField.setEnabled(true);
-				passwordField.setEnabled(true);
+//				usrTextField.setEnabled(true);
+//				passwordField.setEnabled(true);
+//				btnCadastro.setEnabled(true);
+//				btnLogin.setEnabled(true);
 			}
 		});
 		btnCadastro.addActionListener(new ActionListener() {
@@ -297,52 +340,68 @@ public class Login extends JFrame {
 				passwordField.setEnabled(false);
 				btnCadastro.setEnabled(false);
 				btnLogin.setEnabled(false);
+				txtIp.setEnabled(false);
+				txtPort.setEnabled(false);
 				String usrOk = validaUsr(usrTextField.getText());
 				String pwOk = validaPw(new String(passwordField.getPassword()));
 				String ipOk = validaIp(txtIp.getText());
 				String portOk = validaPort(txtPort.getText());
 				if (usrOk.isEmpty() && pwOk.isEmpty() && ipOk.isEmpty() && portOk.isEmpty()) {
-					try {
-						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
-						int b = toServer.cadastro(usrTextField.getText(), new String(passwordField.getPassword()));
-						if (b == 1) {
-							lblUsrInfo.setForeground(Color.GREEN);
-							lblUsrInfo.setText("Cadastro efetuado com sucesso: " + usrTextField.getText());
-						} else if (b == 2) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Nome de usuário indisponível: " + usrTextField.getText());
-						} else if (b == 0 || b == -1) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
-						} else if (b == 3) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Nome de usuário ou senha inválidos: " + usrTextField.getText());
-						}
-					} catch (ConnectException e1) {
-						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
-							lblUsrInfo.setForeground(Color.RED);
-							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
-						}
-					} catch (IOException e1) {
-						lblUsrInfo.setForeground(Color.RED);
-						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
-						e1.printStackTrace();
-					} catch (GeneralSecurityException e1) {
-						lblUsrInfo.setForeground(Color.RED);
-						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
-						e1.printStackTrace();
-					}
+					(new Thread(new cadastra())).start();
+//					try {
+//						notBrokenFinished = false;
+////						(new Thread(new naoQuebrou())).start(); 
+//						// TODO DESCOBRIR COMO FAZER A GUI NÃO FICAR FREEZADA POR ESSES LISTENERS
+//						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
+//						int b = toServer.cadastro(usrTextField.getText(), new String(passwordField.getPassword()));
+//						notBrokenFinished = true;
+//						if (b == 1) {
+//							lblUsrInfo.setForeground(Color.GREEN);
+//							lblUsrInfo.setText("Cadastro efetuado com sucesso: " + usrTextField.getText());
+//						} else if (b == 2) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Nome de usuário indisponível: " + usrTextField.getText());
+//						} else if (b == 0 || b == -1) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
+//						} else if (b == 3) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Nome de usuário ou senha inválidos: " + usrTextField.getText());
+//						}
+//					} catch (ConnectException e1) {
+//						notBrokenFinished = true;
+//						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
+//							lblUsrInfo.setForeground(Color.RED);
+//							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
+//						}
+//					} catch (IOException e1) {
+//						notBrokenFinished = true;
+//						lblUsrInfo.setForeground(Color.RED);
+//						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
+//						e1.printStackTrace();
+//					} catch (GeneralSecurityException e1) {
+//						notBrokenFinished = true;
+//						lblUsrInfo.setForeground(Color.RED);
+//						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
+//						e1.printStackTrace();
+//					}
 				} else {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText(usrOk);
 					lblPwInfo.setText(pwOk);
 					lblPortinfo.setText(portOk);
 					lblIpinfo.setText(ipOk);
+					usrTextField.setEnabled(true);
+					passwordField.setEnabled(true);
+					btnCadastro.setEnabled(true);
+					btnLogin.setEnabled(true);
+					txtIp.setEnabled(true);
+					txtPort.setEnabled(true);
 				}
-				usrTextField.setEnabled(true);
-				passwordField.setEnabled(true);
-				btnCadastro.setEnabled(true);
-				btnLogin.setEnabled(true);
+//				usrTextField.setEnabled(true);
+//				passwordField.setEnabled(true);
+//				btnCadastro.setEnabled(true);
+//				btnLogin.setEnabled(true);
 			}
 		});
 		
@@ -438,6 +497,126 @@ public class Login extends JFrame {
 			}
 		});
 		
+	}
+	
+	class cadastra implements Runnable {
+		public void run() {
+			try {
+				notBrokenFinished = false;
+				(new Thread(new naoQuebrou())).start(); 
+				toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
+				int b = toServer.cadastro(usrTextField.getText(), new String(passwordField.getPassword()));
+				notBrokenFinished = true;
+				if (b == 1) {
+					lblUsrInfo.setForeground(Color.GREEN);
+					lblUsrInfo.setText("Cadastro efetuado com sucesso: " + usrTextField.getText());
+				} else if (b == 2) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Nome de usuário indisponível: " + usrTextField.getText());
+				} else if (b == 0 || b == -1) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
+				} else if (b == 3) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Nome de usuário ou senha inválidos: " + usrTextField.getText());
+				}
+			} catch (ConnectException e1) {
+				notBrokenFinished = true;
+				if (e1.getMessage().equals("Connection refused (Connection refused)")) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Não foi possível se conectar ao servidor");
+				}
+			} catch (IOException e1) {
+				notBrokenFinished = true;
+				lblUsrInfo.setForeground(Color.RED);
+				lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
+				e1.printStackTrace();
+			} catch (GeneralSecurityException e1) {
+				notBrokenFinished = true;
+				lblUsrInfo.setForeground(Color.RED);
+				lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
+				e1.printStackTrace();
+			} finally {
+				usrTextField.setEnabled(true);
+				passwordField.setEnabled(true);
+				btnCadastro.setEnabled(true);
+				btnLogin.setEnabled(true);
+				txtIp.setEnabled(true);
+				txtPort.setEnabled(true);
+			}
+		}
+	}
+	
+	class loga implements Runnable { 
+		public void run() {
+			try {
+				notBrokenFinished = false;
+				(new Thread(new naoQuebrou())).start();
+				toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
+				Map.Entry<ArrayList<DGServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
+				notBrokenFinished = true;
+				int status = mp.getValue().intValue();
+				if (status == 1) {
+					Profile p = new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
+					p.setVisible(true);
+					setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
+					lblUsrInfo.setForeground(Color.GREEN);
+					lblUsrInfo.setText("Login efetuado com sucesso"); // esse daqui nunca vai ser visto
+				} else if (status == 2) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Usuário já está online");
+				} else if (status == 0) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Usuário ou senha incorretos");
+				} else if (status == -1) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Não conseguimos portas livres");
+				}
+			} catch (ConnectException e1) {
+				notBrokenFinished = true;
+				if (e1.getMessage().equals("Connection refused (Connection refused)")) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Não foi possível se conectar ao servidor");
+				}
+			} catch (Exception e1) {
+				notBrokenFinished = true;
+				lblUsrInfo.setForeground(Color.RED);
+				lblUsrInfo.setText("Erro tosco durante o login");
+				e1.printStackTrace();
+			} finally {
+				usrTextField.setEnabled(true);
+				passwordField.setEnabled(true);
+				btnCadastro.setEnabled(true);
+				btnLogin.setEnabled(true);
+				txtIp.setEnabled(true);
+				txtPort.setEnabled(true);
+			}
+		}
+	}
+	
+	class naoQuebrou implements Runnable {
+		public void run() {
+			lblNotbroken.setText(".");
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			while (!notBrokenFinished) {
+				if (lblNotbroken.getText().length() > 15) {
+					lblNotbroken.setText("");
+				}
+				lblNotbroken.setText(lblNotbroken.getText() + ".");
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			lblNotbroken.setText("     ");
+		}
 	}
 	
 	static String validaIp(String ip) {
