@@ -66,18 +66,25 @@ public class DGSocket {
 	
 	private Thread tEnvia, tRecebe;
 	
-	public DGSocket(String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
-		this(-1, remoteIP, remotePort, ESTADO, ackNum);
+	private int[] pktsPerdidos;
+	
+	public DGSocket(int[] pktsPerdidos, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+		this(pktsPerdidos, -1, remoteIP, remotePort, ESTADO, ackNum);
 	}
 	
-	public DGSocket(String remoteIP, int remotePort) throws IOException {
-		this(-1, remoteIP, remotePort, "CLOSED", 0);
+//	public DGSocket(String remoteIP, int remotePort) throws IOException {
+//		this(new int[1], -1, remoteIP, remotePort, "CLOSED", 0);
+//	}
+	
+	public DGSocket(int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
+		this(pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
 	}
-	public DGSocket(int port, String remoteIP, int remotePort) throws IOException {
-		this(port, remoteIP, remotePort, "CLOSED", 0);
+	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort) throws IOException {
+		this(pktsPerdidos, port, remoteIP, remotePort, "CLOSED", 0);
 	}
 	
-	public DGSocket(int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+		this.pktsPerdidos = pktsPerdidos;
 		this.ESTADO = ESTADO;
 		byte[] data = new byte[1024];
 		this.nextSeqNum = this.sendBase = this.rcvBase = this.rcvLastAcked = 0; //new Random().nextInt(Integer.MAX_VALUE - 1);
@@ -265,7 +272,7 @@ public class DGSocket {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		DGSocket teste = new DGSocket("localhost", 2020);
+		DGSocket teste = new DGSocket(new int[1], "localhost", 2020);
 		byte[] teste1 = "oi".getBytes("UTF-8");
 		System.out.println("Vou usar o send na main");
 		teste.send(teste1, teste1.length);
@@ -349,28 +356,6 @@ public class DGSocket {
 		} else {
 			throw new IOException("DGSocket já está fechada.");
 		}
-//		int i = 0;
-//		while (sendBase != nextSeqNum || rcvBase != ackNum) {
-//			if (i >= 480)
-//				break; // esperar até 4 minutos hehehe.
-//			try {
-//				Thread.sleep(500);
-//			} catch (InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//				break;
-//			}
-//			i++;
-//		}
-//		this.close = true;
-//		ackMeTimer.cancel();
-//		delayedAckTimer.cancel();
-//		msgSentTimer.cancel();
-//		tEnvia.interrupt();
-//		tRecebe.interrupt();
-////		tEnvia.join();
-////		tRecebe.join();
-//		this.socket.close();
 	}
 	
 	class ClosesStuff implements Runnable {
@@ -433,7 +418,14 @@ public class DGSocket {
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							System.out.println("Caught it");
-//							e.printStackTrace();
+							e.printStackTrace();
+							try {
+								close();
+							} catch (IOException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+								return;
+							}
 							return;
 						}
 					}
@@ -558,6 +550,10 @@ public class DGSocket {
 	class MsgSentTimeOut extends TimerTask {
 		public void run() {
 			try {
+				synchronized (pktsPerdidos) {
+					pktsPerdidos[0]++;
+					pktsPerdidos.notify();
+				}
 				if ((ESTADO.equals("SYN SENT") && timeoutTries > 2) || timeoutTries > 4) {
 					System.out.println("end host não responde.");
 					connectionRefused = true;
@@ -596,6 +592,15 @@ public class DGSocket {
 							testeMsgSentTimerTask = new MsgSentTimeOut();
 							msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 						}
+					} catch (PortUnreachableException e) {
+						portUnreachable = true;
+						try {
+							close();
+						} catch (IOException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
+						return;
 					} catch (IOException e) {
 						// TODO rip
 						e.printStackTrace();
@@ -1106,6 +1111,10 @@ public class DGSocket {
 								// < nextSeqNum é para não garantir que ele só está reenviando ack do último segmento
 								// que enviei
 								System.out.println("Recebi ack duplicado de " + getackNum(data));
+								synchronized (pktsPerdidos) {
+									pktsPerdidos[0]++;
+									pktsPerdidos.notify();
+								}
 								acksDuplicados[circulariza(getackNum(data))]++;
 								if (acksDuplicados[circulariza(getackNum(data))] == 3) { // retransmissão rápida
 									byte[] newData = testeSendBuffer[circulariza(getackNum(data))].getData();

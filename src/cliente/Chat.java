@@ -66,6 +66,7 @@ public class Chat extends JFrame {
 	private Thread msgstatusthread;
 	private Thread msgrcv;
 	private JLabel lblMsgInfo;
+	private int[] pktsPerdidos;
 	
 	/**
 	 * Create the frame.
@@ -75,7 +76,7 @@ public class Chat extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					new Chat("eu", "ele",null, null, null, null, true); //new Socket("localhost", 2030));
+					new Chat("eu", "ele",null, null, null, null, null, true); //new Socket("localhost", 2030));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -84,10 +85,10 @@ public class Chat extends JFrame {
 	}
 	
 	public Chat(String usr, String friend, DGSocket friendSocketConstrutor, DGSocket msgStatusSocketConstrutor,
-			ArrayList<DGServerSocket> SSList, ArrayList<String> amigos, boolean initVisible) throws IOException {
+			ArrayList<DGServerSocket> SSList, ArrayList<String> amigos, int[] pktsPerdidos, boolean initVisible) throws IOException {
 		setResizable(false);
 
-		// TODO lembrar de mudar p nosso protocolo
+		this.pktsPerdidos = pktsPerdidos;
 		this.servicoStatusMsgOk = true;
 		this.dateFormat = new SimpleDateFormat("HH:mm:ss");
 
@@ -266,8 +267,8 @@ public class Chat extends JFrame {
 										String friendIP = str.substring(fP + 1, str.indexOf(','));
 										try {
 											int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
-											friendSocket = new DGSocket(friendIP, friendPort);
-											msgStatusSocket = new DGSocket(friendIP, friendPort +1);
+											friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
+											msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
 											friendOffline = false;
 											msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
 											msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
@@ -340,8 +341,8 @@ public class Chat extends JFrame {
 									String friendIP = str.substring(fP + 1, str.indexOf(','));
 									try {
 										int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
-										friendSocket = new DGSocket(friendIP, friendPort);
-										msgStatusSocket = new DGSocket(friendIP, friendPort +1);
+										friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
+										msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
 										friendOffline = false;
 										msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
 										msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));

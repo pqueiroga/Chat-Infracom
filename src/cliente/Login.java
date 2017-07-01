@@ -53,7 +53,7 @@ public class Login extends JFrame {
 	private JLabel lblIpinfo;
 	private JLabel lblPortinfo;
 	private JButton btnCadastro;
-	
+		
 	/**
 	 * Launch the application.
 	 */
@@ -504,7 +504,7 @@ public class Login extends JFrame {
 			try {
 				notBrokenFinished = false;
 				(new Thread(new naoQuebrou())).start(); 
-				toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
+				toServer = new ServerAPI(new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
 				int b = toServer.cadastro(usrTextField.getText(), new String(passwordField.getPassword()));
 				notBrokenFinished = true;
 				if (b == 1) {
@@ -552,7 +552,7 @@ public class Login extends JFrame {
 			try {
 				notBrokenFinished = false;
 				(new Thread(new naoQuebrou())).start();
-				toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
+				toServer = new ServerAPI(new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
 				Map.Entry<ArrayList<DGServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 				notBrokenFinished = true;
 				int status = mp.getValue().intValue();

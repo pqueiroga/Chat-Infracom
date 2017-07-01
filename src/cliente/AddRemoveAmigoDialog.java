@@ -36,8 +36,8 @@ public class AddRemoveAmigoDialog extends JDialog {
 	private final JPanel contentPanel = new JPanel();
 	private JTextField textFieldFriend;
 	
-	public AddRemoveAmigoDialog(String username, String ip, int port) {
-		ServerAPI toServer = new ServerAPI(ip, port);
+	public AddRemoveAmigoDialog(int[] pktsPerdidos, String username, String ip, int port) {
+		ServerAPI toServer = new ServerAPI(pktsPerdidos, ip, port);
 		int randomNum = ThreadLocalRandom.current().nextInt(3, 9 + 1);
 		Color cor;
 		switch (randomNum) {
@@ -52,6 +52,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 			break;
 		case 6:
 			cor = Color.LIGHT_GRAY;
+			break;
 		case 7:
 			cor = Color.MAGENTA;
 			break;
@@ -78,6 +79,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 			break;
 		case 6:
 			cor = Color.LIGHT_GRAY;
+			break;
 		case 7:
 			cor = Color.MAGENTA;
 			break;
@@ -108,6 +110,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 			break;
 		case 6:
 			cor = Color.LIGHT_GRAY;
+			break;
 		case 7:
 			cor = Color.MAGENTA;
 			break;
@@ -171,6 +174,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 				break;
 			case 6:
 				cor = Color.LIGHT_GRAY;
+				break;
 			case 7:
 				cor = Color.MAGENTA;
 				break;
@@ -213,7 +217,8 @@ public class AddRemoveAmigoDialog extends JDialog {
 								lblInfo.setText(usrOk);
 							}
 						} catch (IOException e1) {
-							// TODO Auto-generated catch block
+							lblInfo.setForeground(Color.RED);
+							lblInfo.setText("Não foi possível se conectar ao servidor");
 							e1.printStackTrace();
 						}
 					}
@@ -251,7 +256,8 @@ public class AddRemoveAmigoDialog extends JDialog {
 										lblInfo.setText("Remoção concluída");
 									}
 								} catch (IOException e1) {
-									// TODO Auto-generated catch block
+									lblInfo.setForeground(Color.RED);
+									lblInfo.setText("Não foi possível se conectar ao servidor");
 									e1.printStackTrace();
 								}
 							}

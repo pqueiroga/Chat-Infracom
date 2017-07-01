@@ -23,7 +23,6 @@ public class ServidorComeco implements Runnable {
 	}
 	
 	public void run() {
-		try {
 //			File usuariosCadastrados = new File("testeDatabase");
 //			if (!usuariosCadastrados.isFile()) {
 //				FileWriter fw = new FileWriter(usuariosCadastrados);
@@ -33,15 +32,15 @@ public class ServidorComeco implements Runnable {
 			ConcurrentMap<String, Long> timer = new ConcurrentHashMap<String, Long>();
 			(new Thread(new TimeOutThread(timer))).start();
 			while (true) {
-				DGSocket connectionSocket = servidor.accept();
-				(new Thread(new ServidorConta(timer,
-						connectionSocket, listaDeUsuarios))).start();
+				try {
+					DGSocket connectionSocket = servidor.accept();
+					(new Thread(new ServidorConta(timer,
+							connectionSocket, listaDeUsuarios))).start();
+				} catch (IOException e) {
+					System.err.println("ERRO: Erro desconhecido ao aceitar conexão.");
+					e.printStackTrace();
+				}
 			}
-		} catch (IOException e) {
-			System.err.println("ERRO: Erro desconhecido ao aceitar conexão.");
-			e.printStackTrace();
-		}// finally {
-//		}
 	}
 	
 	class TimeOutThread implements Runnable {

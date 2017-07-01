@@ -137,6 +137,7 @@ public class ServerGUI extends JFrame {
 					txtPorta.setText("Porta");
 				} catch (BindException e) {
 					txtPorta.setText("Porta");
+					e.printStackTrace();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -161,6 +162,7 @@ public class ServerGUI extends JFrame {
 						txtPorta.setText("Porta");
 					} catch (BindException e) {
 						txtPorta.setText("Porta");
+						e.printStackTrace();
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

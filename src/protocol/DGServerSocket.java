@@ -20,7 +20,7 @@ public class DGServerSocket {
 	public static void main(String[] args) throws Exception {
 		DGServerSocket teste = new DGServerSocket(2020);
 		System.out.println("Criei teste");
-		DGSocket teste2 = teste.accept();
+		DGSocket teste2 = teste.accept(new int[1]);
 		System.out.println("Recebi teste2");
 		byte[] data = new byte[1024];
 		System.out.println("Chamei receive na main do dgserversocket");
@@ -53,6 +53,10 @@ public class DGServerSocket {
 	}
 	
 	public DGSocket accept() throws IOException {
+		return accept(new int[1]);
+	}
+	
+	public DGSocket accept(int[] pktsPerdidos) throws IOException {
 		byte[] data = new byte[headerLength];
 		DatagramPacket inicia = new DatagramPacket(data, headerLength);
 		do {
@@ -63,7 +67,8 @@ public class DGServerSocket {
 		System.out.println("Recebi SYN");
 		
 		this.ackNum = getSeqNum(data) + 1;
-		DGSocket retorno2 = new DGSocket(inicia.getAddress().getHostName(), inicia.getPort(), "SYN RECEIVED", this.ackNum);
+		
+		DGSocket retorno2 = new DGSocket(pktsPerdidos, inicia.getAddress().getHostName(), inicia.getPort(), "SYN RECEIVED", this.ackNum);
 //		System.out.println("Vou travar esperando estado hehe");
 //		while (!retorno2.getEstado().equals("ESTABLISHED"));
 //		System.out.println("estado established, vou devolver a socket pra main!");
