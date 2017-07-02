@@ -1,10 +1,15 @@
 package protocol;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.ArrayList;
+
+import utility.buffer.BufferMethods;
 
 public class DGServerSocket {
 	
@@ -22,34 +27,72 @@ public class DGServerSocket {
 		System.out.println("Criei teste");
 		DGSocket teste2 = teste.accept(new int[1]);
 		System.out.println("Recebi teste2");
-		byte[] data = new byte[1024];
-		System.out.println("Chamei receive na main do dgserversocket");
-		teste2.receive(data, 2);
-		System.out.println("Saí do primeiro receive");
-//		System.out.println(receiver.getLength());
-		System.out.println(new String(data, 0, 2, "UTF-8"));
-		teste2.send(data, 2);
-		ArrayList<String> nnteste = new ArrayList<String>();
-		String teste3;
-		data = new byte[1024];
-		for (int i = 1000; i < 10000; i++) {
-			teste2.receive(data, 6);
-//			Thread.sleep(500);
-			teste3 = new String(data, 0, 6, "UTF-8");
-			nnteste.add(teste3);
+//		byte[] data = new byte[1024];
+//		System.out.println("Chamei receive na main do dgserversocket");
+//		teste2.receive(data, 2);
+//		System.out.println("Saí do primeiro receive");
+////		System.out.println(receiver.getLength());
+//		System.out.println(new String(data, 0, 2, "UTF-8"));
+//		teste2.send(data, 2);
+//		ArrayList<String> nnteste = new ArrayList<String>();
+//		String teste3;
+//		data = new byte[1024];
+//		for (int i = 1000; i < 10000; i++) {
+//			teste2.receive(data, 6);
+////			Thread.sleep(500);
+//			teste3 = new String(data, 0, 6, "UTF-8");
+//			nnteste.add(teste3);
+//		}
+//		int anterior = 999;
+//		int atual = 1000;
+//		for (String str : nnteste) {
+//			atual = Integer.parseInt(str.substring(str.indexOf('i') + 1, str.length()));
+//			if (anterior > atual || anterior + 1 != atual) {
+//				System.out.println("FORA DE ORDEM: anterior = " + anterior + "\natual = " + atual);
+//			}
+//			anterior = atual;
+//		}
+//		System.out.println(nnteste.toString());
+		
+		
+		String directory = "/home/pedro/InfraComProject/Download_Dump/"; //"Download_Dump" + File.separator;
+		String fileName = BufferMethods.readString(teste2);
+		fileName = fileName.replaceAll(" ", "");
+		System.out.println(directory + fileName);
+		File arquivoReceptor = new File(directory + fileName);
+		if (arquivoReceptor.isFile()) {
+			arquivoReceptor.delete();
 		}
-		int anterior = 999;
-		int atual = 1000;
-		for (String str : nnteste) {
-			atual = Integer.parseInt(str.substring(str.indexOf('i') + 1, str.length()));
-			if (anterior > atual || anterior + 1 != atual) {
-				System.out.println("FORA DE ORDEM: anterior = " + anterior + "\natual = " + atual);
+		arquivoReceptor.createNewFile();
+		long fileSize = BufferMethods.receiveLong(teste2);
+		System.out.println("fileSize: " + fileSize);
+		long remainingSize = fileSize;
+		byte[] buffer = new byte[1024];
+		int bytesRead = 0;
+		FileOutputStream outToFile = new FileOutputStream(arquivoReceptor);
+		while (true) {
+			try {
+				bytesRead = teste2.receive(buffer, (int)Math.min(buffer.length, remainingSize));
+			} catch (Exception e) {
+				bytesRead = -1;
 			}
-			anterior = atual;
+			if (bytesRead == -1) break;
+			remainingSize -= bytesRead;
+			System.out.println("bytesRead: " + bytesRead+ "\nremainingSize: " + remainingSize);
+			outToFile.write(buffer, 0, bytesRead);
+			if (remainingSize == 0) break;
 		}
-		System.out.println(nnteste.toString());
-		teste2.close();
-		System.out.println("Enquanto fecha eu posso continuar fazendo as coisas");
+		outToFile.close();
+//		String exe = "xdg-open " + new File(directory).getAbsolutePath() + File.separator + fileName;
+//		System.out.println(exe);
+//		try {
+//			Runtime.getRuntime().exec(exe);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+		
+//		teste2.close();
+//		System.out.println("Enquanto fecha eu posso continuar fazendo as coisas");
 	}
 	
 	public DGSocket accept() throws IOException {

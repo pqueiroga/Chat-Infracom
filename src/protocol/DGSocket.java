@@ -1,5 +1,7 @@
 package protocol;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.DatagramPacket;
@@ -10,6 +12,8 @@ import java.net.SocketException;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import utility.buffer.BufferMethods;
 
 public class DGSocket {
 	
@@ -24,20 +28,27 @@ public class DGSocket {
 	
 	private String ESTADO;
 	
-	private short RcvBuffer = 200;
-	private short RcvBufferSize = 200;
+	private short RcvBuffer = 80;
+	private short RcvBufferSize = 80;
 	private int headerLength = 14;
+	
+	private boolean recuperacaoRapida = false;
+	private short congwin = 1;
+	private short ssthresh = 64;
+	private byte acksDuplicados = 0;
+	private short varPrevencao = 0;
 	
 	private int remotePort;
 	private InetAddress remoteInetAddress;
 	private int ackNum;
-	private int nextSeqNum; // nextSeqNum - 1 nos diz LastPacketSent
+	private int nextSeqNum;
+	private int lastPacketSent = -1;
 	private int sendBase; // sendBase - 1 nos diz LastPacketAcked
 	private int sendWindowSize;
 	private int rcvwnd;
 	private DatagramPacket[] testeSendBuffer = new DatagramPacket[RcvBufferSize];
 	private byte[] testeSendBufferEstado = new byte[RcvBufferSize]; // 1 n enviado, 2 enviado, 3 reconhecido
-	private int[] acksDuplicados = new int[RcvBufferSize];
+//	private int[] acksDuplicados = new int[RcvBufferSize];
 	private DatagramPacket[] testeRcvBuffer = new DatagramPacket[RcvBufferSize];
 	private boolean[] testeRcvBufferEstado = new boolean[RcvBufferSize]; // true posição ocupada, false posição livre
 	
@@ -185,7 +196,9 @@ public class DGSocket {
 
 			this.nextSeqNum++;
 			System.out.println("Coloquei o pacote " + (this.nextSeqNum - 1) + " no sendBuffer pra ser enviado,"
-					+ " na posição " + circulariza(this.nextSeqNum - 1));
+					+ " na posição " + circulariza(this.nextSeqNum - 1) +
+					"\nEle tem " + (testeSendBuffer[circulariza(this.nextSeqNum -1)].getLength() -14) +
+					" bytes de carga útil");
 			testeSendBuffer.notify();
 //			System.out.println("Notifiquei o envia dados do testeSendBuffer OK");
 		}
@@ -256,9 +269,11 @@ public class DGSocket {
 				}
 			}
 			System.out.println("Vou tentar dar o pacote " + rcvBase + " para a aplicação");
+			System.out.println("Ele tem " + (testeRcvBuffer[circulariza(rcvBase)].getLength() - 14) + 
+					" bytes de carga útil.");
 			byte[] temp = testeRcvBuffer[circulariza(rcvBase)].getData();
 			for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[circulariza(rcvBase)].getLength(); i++, j++) {
-				data[i] =  temp[j];
+				data[i] = temp[j];
 				b++;
 			}
 			System.out.println("Mandei pra aplicação o pacote " + rcvBase);
@@ -273,18 +288,45 @@ public class DGSocket {
 	
 	public static void main(String[] args) throws IOException {
 		DGSocket teste = new DGSocket(new int[1], "localhost", 2020);
-		byte[] teste1 = "oi".getBytes("UTF-8");
-		System.out.println("Vou usar o send na main");
-		teste.send(teste1, teste1.length);
-		System.out.println("Usei o send na main");
-		byte[] teste2 = new byte[6];
-		teste.receive(teste2, 2);
+//		byte[] teste1 = "oi".getBytes("UTF-8");
+//		System.out.println("Vou usar o send na main");
+//		teste.send(teste1, teste1.length);
+//		System.out.println("Usei o send na main");
+//		byte[] teste2 = new byte[6];
+//		teste.receive(teste2, 2);
+//
+//		for (int i = 1000; i < 10000; i++) {
+//			teste1 = ("oi" + i).getBytes("UTF-8");
+//			teste.send(teste1, 6);
+//		}
+//		System.out.println("Fim");
+		
+		
+		String directory = "Upload_Pool" + File.separator;
+		File uploadFile = new File("/home/pedro/InfraComProject/Upload_Pool/" + "easyname.mkv");
+		if (uploadFile.isFile()) {
+			// diz nome do arquivo que estarei enviando
+			BufferMethods.writeString("easyname.mkv", teste);
+			System.out.println(directory + "easyname.mkv");
+			// diz quantos bytes estarei enviando
+			System.out.println("fileSize: " + uploadFile.length());
 
-		for (int i = 1000; i < 10000; i++) {
-			teste1 = ("oi" + i).getBytes("UTF-8");
-			teste.send(teste1, 6);
+			BufferMethods.sendLong(uploadFile.length(), teste);
+			
+			long remainingSize = uploadFile.length();
+			byte[] buffer = new byte[1024];
+			int bytesRead;
+			FileInputStream fInputStream = new FileInputStream(uploadFile);
+			
+			while (remainingSize > 0  && (bytesRead = fInputStream.read(buffer, 0,
+					(int)Math.min(buffer.length, remainingSize))) != -1) {
+				remainingSize -= bytesRead;
+				System.out.println("bytesRead: " + bytesRead + "\nremainingSize: " + remainingSize);
+				teste.send(buffer, bytesRead);
+			}
+			fInputStream.close();
 		}
-		System.out.println("Fim");
+		
 		teste.close();
 		System.out.println("Enquanto fecha eu posso continuar fazendo coisas");
 	}
@@ -310,8 +352,17 @@ public class DGSocket {
 	}
 	
 	private boolean podeEnviar() {
-		for (int i = sendBase; i < sendBase + sendWindowSize  && i < nextSeqNum; i++) {//i < nextSeqNum && i < testeSendBufferEstado.length; i++) {
-			System.out.println("testeSendBufferEstado[circulariza(i) (" + circulariza(i) + ")]: " +testeSendBufferEstado[circulariza(i)]);
+//		int temp = Math.max(lastPacketSent, 0);
+//		if ((temp - sendBase + 1) > Math.min(congwin, sendWindowSize)) {
+//			System.out.println(temp + ", " + sendBase +", " +congwin + ", " + sendWindowSize);
+//			return false;
+//		}
+		if (congwin < 1) {
+			congwin = 1;
+		}
+		for (int i = sendBase; i < sendBase + Math.min(congwin, sendWindowSize) && i < nextSeqNum; i++) {//i < nextSeqNum && i < testeSendBufferEstado.length; i++) {
+//			System.out.println("testeSendBufferEstado[circulariza(i) (" + circulariza(i) + ")]: " +testeSendBufferEstado[circulariza(i)]);
+//		for (int i = temp; i < temp + Math.min(sendWindowSize, congwin) && i < nextSeqNum; ++i) {
 			if (testeSendBufferEstado[circulariza(i)] == 1) {
 				return true;
 			}
@@ -320,7 +371,7 @@ public class DGSocket {
 	}
 	
 	private int transmitidoNaoReconhecido(int end) {
-		for (int i = sendBase; i < sendBase + sendWindowSize && i < nextSeqNum && i < end && i < sendBase + RcvBufferSize; i++) {
+		for (int i = sendBase; i <= lastPacketSent && i < nextSeqNum && i < end && i < sendBase + RcvBufferSize; ++i) {
 			if (testeSendBufferEstado[circulariza(i)] == 2) {
 				return i;
 			}
@@ -328,19 +379,19 @@ public class DGSocket {
 		return -1;
 	}
 	
-	private int recebidoNaoReconhecido(int end) {
-		for (int i = rcvLastAcked; i < end && i < rcvLastAcked + RcvBufferSize; i++) {
-			if (testeRcvBufferEstado[circulariza(i)]) {
-				return i;
-			}
-		}
-		return -1;
-	}
+//	private int recebidoNaoReconhecido(int end) {
+//		for (int i = rcvLastAcked; i < end && i < rcvLastAcked + RcvBufferSize; ++i) {
+//			if (testeRcvBufferEstado[circulariza(i)]) {
+//				return i;
+//			}
+//		}
+//		return -1;
+//	}
 	
 	private int descobreProximoEsperado() {
 		System.out.println("descobreProximoEsperado() -> lastPacketRcvd: " + lastPacketRcvd);
-		for (int i = ackNum; i <= lastPacketRcvd; i++) {
-			System.out.println("testeRcvBufferEstado[circulariza(i) (" + circulariza(i) + ")]: " +testeRcvBufferEstado[circulariza(i)]);
+		for (int i = ackNum; i <= lastPacketRcvd; ++i) {
+//			System.out.println("testeRcvBufferEstado[circulariza(i) (" + circulariza(i) + ")]: " +testeRcvBufferEstado[circulariza(i)]);
 			if (!testeRcvBufferEstado[circulariza(i)]) {
 				System.out.println("proximo esperado: " + i);
 				return i;
@@ -378,6 +429,23 @@ public class DGSocket {
 			synchronized (testeSendBuffer) {
 				testeSendBuffer.notifyAll();
 			}
+			// TODO FIN
+			byte[] ack = new byte[headerLength];
+			rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+
+			cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+			DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
+			if (ackTimer > rcvLastAcked) {
+				rcvLastAcked = ackTimer;
+			}
+			try {
+				socket.send(ACK);
+				socket.send(ACK);
+				socket.send(ACK);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			ackMeTimer.cancel();
 			delayedAckTimer.cancel();
 			msgSentTimer.cancel();
@@ -397,6 +465,7 @@ public class DGSocket {
 					while (!podeEnviar()) {
 						try {
 							System.out.println("Estou esperando no testeSendBuffer pra enviar dados");
+							System.out.println(lastPacketSent + ", " + sendBase +", " +congwin + ", " + sendWindowSize);
 							if (sendWindowSize == 0) {
 								synchronized (ackMeTimer) {
 									
@@ -433,10 +502,14 @@ public class DGSocket {
 					System.out.println("Saí da espera no testeSendBuffer de verdade com janela receptora do dest (" +
 					 sendWindowSize + ") e enviarei dados");
 					try {
-						for (int i = sendBase; i < nextSeqNum && i < sendBase + sendWindowSize; i++) {//i < nextSeqNum; i++) {
-							assert i < sendBase + sendWindowSize : sendBase + " + " + sendWindowSize + " >= " + i;
-							if (testeSendBufferEstado[circulariza(i)] == 1) {
-								assert i < sendBase + sendWindowSize : sendBase + " + " + sendWindowSize + " >= " + i + "    2";
+//						for (int i = sendBase; i < sendBase + sendWindowSize && i < nextSeqNum &&
+//								(lastPacketSent - (sendBase - 1)) <= Math.min(sendWindowSize, congwin); i++) {//i < nextSeqNum; i++) {
+						System.out.println(lastPacketSent - (sendBase - 1) + ", " + Math.min(sendWindowSize, congwin));
+						while ((lastPacketSent - (sendBase - 1)) <= Math.min(sendWindowSize, congwin)) {
+							System.out.println(lastPacketSent - (sendBase - 1) + ", " + Math.min(sendWindowSize, congwin));
+//							assert i < sendBase + sendWindowSize : sendBase + " + " + sendWindowSize + " >= " + i;
+							if (testeSendBufferEstado[circulariza(lastPacketSent + 1)] == 1) {
+//								assert i < sendBase + sendWindowSize : sendBase + " + " + sendWindowSize + " >= " + i + "    2";
 //								System.out.println("Janela receptora do destinatário (" + sendWindowSize +")");
 //								System.out.println("Pacotes no ar: " + (i - 1 - (sendBase - 1)));
 								
@@ -447,11 +520,13 @@ public class DGSocket {
 										ackMeTimerOn = false;
 //									}
 								}
-								System.out.println("Enviei o pacote " + i);
-								socket.send(testeSendBuffer[circulariza(i)]);
+								System.out.println("Enviei o pacote " + (lastPacketSent + 1) + "\nEle tem " + (testeSendBuffer[circulariza(lastPacketSent + 1)].getLength() -14) +
+										" bytes de carga útil");
+								socket.send(testeSendBuffer[circulariza(lastPacketSent + 1)]);
+								++lastPacketSent;
 								
 								synchronized (msgSentTimer) {
-									if (!msgTimerOn) {// && enviou) {
+									if (!msgTimerOn) {
 										pktTimer = sendBase;
 										timeoutTries = 0;
 										timeOutInterval = 500;//= timeOutRTT;
@@ -469,9 +544,9 @@ public class DGSocket {
 								if (sampleRTT != -1) {
 									timeSent = System.currentTimeMillis();
 									sampleRTT = -1;
-									packetSample = i;
+									packetSample = lastPacketSent;
 								}
-								testeSendBufferEstado[circulariza(i)] = 2;
+								testeSendBufferEstado[circulariza(lastPacketSent)] = 2;
 								synchronized (delayedAckTimer) {
 									if (ackTimerOn) {
 										if (ackTimer <= ackNum) {
@@ -481,6 +556,8 @@ public class DGSocket {
 										}
 									}
 								}
+							} else {
+								break;
 							}
 						}
 					} catch (PortUnreachableException e1) {
@@ -554,6 +631,10 @@ public class DGSocket {
 					pktsPerdidos[0]++;
 					pktsPerdidos.notify();
 				}
+				ssthresh = (short) (congwin >> 1);
+				congwin = 1;
+				acksDuplicados = 0;
+				recuperacaoRapida = false;
 				if ((ESTADO.equals("SYN SENT") && timeoutTries > 2) || timeoutTries > 4) {
 					System.out.println("end host não responde.");
 					connectionRefused = true;
@@ -655,7 +736,7 @@ public class DGSocket {
 		public void run() {
 			while (!closed) {
 				try {
-					byte[] data = new byte[1024];
+					byte[] data = new byte[4110]; // carga útil máxima de 4096
 					DatagramPacket dp = new DatagramPacket(data, data.length);
 					System.out.println("Vou esperar por um datagrama no RecebeDados");
 					socket.receive(dp);
@@ -663,7 +744,9 @@ public class DGSocket {
 					System.out.println("SeqNum: " + getSeqNum(data) +
 							"\nackNum: " + getackNum(data) +
 							"\nrcvwnd: " + getRcvwnd(data) +
-							"\ndado: " + new String(data, 14, 19, "UTF-8"));
+							"\nEle tem " + (dp.getLength() -14) +
+							" bytes de carga útil" +
+							"\ndado: " + new String(data, 14, dp.getLength() - 14, "UTF-8"));
 					
 					if (random.nextDouble() < pDescartaPacote) { // simula perda de pacotes
 						System.out.println("Perdi o datagram ehehe");
@@ -685,8 +768,8 @@ public class DGSocket {
 						System.out.println("SeqNum: " + nextSeqNum +
 								"\nackNum: " + ackNum +
 								"\nrcvwnd: " + rcvwnd +
-								"\nack: " + getAck(data) +
-								"\nackme: " + getAckMe(data));
+								"\nack: " + getAck(ack) +
+								"\nackme: " + getAckMe(ack));
 						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 						// envio imediato de um ACK
 						socket.send(ACK);
@@ -695,18 +778,18 @@ public class DGSocket {
 					}
 					
 					
-					if (getSeqNum(data) > lastPacketRcvd + rcvwnd) {
-						System.out.println("Não cabe na janela de recepção, descartei essa merda");
-						byte[] ack = new byte[headerLength];
-						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-						System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
-								+ " - (" + rcvBase + " - 1))) = " + rcvwnd);
-						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
-						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
-						// envio imediato de um ACK
-						socket.send(ACK);
-						continue;
-					}
+//					if (getSeqNum(data) > lastPacketRcvd + rcvwnd) {
+//						System.out.println("Não cabe na janela de recepção, descartei essa merda");
+//						byte[] ack = new byte[headerLength];
+//						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+//						System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+//								+ " - (" + rcvBase + " - 1))) = " + rcvwnd);
+//						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+//						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
+//						// envio imediato de um ACK
+//						socket.send(ACK);
+//						continue;
+//					}
 					
 //					System.out.println("Rcvwnd que tem no pacote " + getRcvwnd(data));
 					sendWindowSize = getRcvwnd(data); // testando se isso melhora o paralelismo
@@ -831,6 +914,18 @@ public class DGSocket {
 					case "ESTABLISHED":
 						// GERA ACK
 						if (!apenasAck) { // não se acka um ack
+							if (getSeqNum(data) > lastPacketRcvd + rcvwnd) {
+								System.out.println("Não cabe na janela de recepção, descartei essa merda");
+								byte[] ack = new byte[headerLength];
+								rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+								System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+										+ " - (" + rcvBase + " - 1))) = " + rcvwnd);
+								cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
+								DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
+								// envio imediato de um ACK
+								socket.send(ACK);
+								continue;
+							}
 							synchronized (testeRcvBuffer) {
 //								System.out.println("Recebi o pacote " + getSeqNum(data) + " ESTADO ESTABLISHED");
 								if (getSeqNum(data) > lastPacketRcvd) {
@@ -850,7 +945,7 @@ public class DGSocket {
 										testeSendBuffer.notifyAll();
 									}
 									
-									int peppa = recebidoNaoReconhecido(ackNum);
+//									int peppa = recebidoNaoReconhecido(ackNum);
 
 									
 									// esse pacote pode ter sido um que preenche lacuna. preciso buscar nos estados
@@ -895,7 +990,7 @@ public class DGSocket {
 										for (int i = 0; i < ackNum; i++) { // ack cumulativo enviado, atualizar
 											// testeRcvBufferEstado[circulariza(i)] = 2;
 										}
-									} else if (peppa == -1) {										
+									} else if (rcvLastAcked == ackNum - 1) {										
 
 										System.out.println("Coloquei ack " + ackNum+ " como delayed ack");
 										// segmento na ordem, todos os dados até o número de seq esperado já tiveram seu ACK enviado
@@ -944,6 +1039,7 @@ public class DGSocket {
 												"\nrcvwnd: " + rcvwnd +
 												"\nack: " + getAck(data) +
 												"\nackme: " + getAckMe(data));
+										rcvLastAcked = ackNum - 1;
 										if (random.nextDouble() >= pDescartaAck) { // simula perda de acks no caminho
 											socket.send(ACK);
 											System.out.println("Mandei o ack " + ackNum);
@@ -954,7 +1050,6 @@ public class DGSocket {
 										
 										// testeRcvBufferEstado[circulariza(peppa)] = 2; // ack enviado
 										// // testeRcvBufferEstado[circulariza(peppa + 1)] = 2; // ack enviado
-										rcvLastAcked = peppa + 1;
 									}
 								} else if (ackNum < getSeqNum(data)) {
 									// chegada de um segmento fora de ordem com número de sequência mais alto do que o esperado
@@ -1038,12 +1133,6 @@ public class DGSocket {
 								System.out.println("Recebi um ack-ackme");
 								synchronized (ackMeTimer) {
 									if (ackMeTimerOn) {
-//										try {
-//											testeAckMeTimerTask.cancel();
-//											ackMeTimer = new Timer();
-//										} catch (IllegalStateException e) {
-//											testeAckMeTimerTask.cancel();
-//										}
 										testeAckMeTimerTask.cancel();
 										testeAckMeTimerTask = new AckMePls();
 										ackMeTimerOn = false;
@@ -1056,12 +1145,51 @@ public class DGSocket {
 								if (getackNum(data) > sendBase) {
 									System.out.println("sendBase = " + getackNum(data));
 									sendBase = getackNum(data);
+									synchronized (msgSentTimer) {
+										
+										testeMsgSentTimerTask.cancel();
+										testeMsgSentTimerTask = new MsgSentTimeOut();
+										msgTimerOn = false; // pq chegou e tal
+										int peppa = transmitidoNaoReconhecido(nextSeqNum);
+										System.out.println("transmitidoNaoReconhecido: " + peppa +
+												"\nlastPacketSent: " + lastPacketSent);
+										if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
+											pktTimer = peppa;
+											timeOutInterval = 500;//= timeOutRTT;
+											try {
+												timeoutTries = 0;
+												msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
+											} catch (IllegalStateException e) {
+												testeMsgSentTimerTask.cancel();
+												testeMsgSentTimerTask = new MsgSentTimeOut();
+												msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
+											}
+											msgTimerOn = true;
+										}
+									}
 								}
 								testeSendBuffer.notifyAll();
 
 							} else if (getackNum(data) > sendBase) {
 								
-								sendWindowSize = getRcvwnd(data);								
+								sendWindowSize = getRcvwnd(data);	
+								if (recuperacaoRapida) {
+									// recuperação rápida
+									congwin = (short) Math.max(ssthresh, 1);
+									acksDuplicados = 0;
+									recuperacaoRapida = false;
+								} else if (congwin < ssthresh) {
+									//partida lenta
+									congwin = (short) (congwin + (getackNum(data) - sendBase));
+								} else {
+									//prevenção de congestionamento
+									varPrevencao = (short) (varPrevencao + (getackNum(data) - sendBase));
+									if (varPrevencao >= congwin) {
+										++congwin;
+										varPrevencao = 0;
+									}
+								}
+								acksDuplicados = 0;
 								
 								System.out.println("Recebi ack " + getackNum(data));
 								if (getackNum(data) > packetSample) {
@@ -1088,6 +1216,8 @@ public class DGSocket {
 									testeMsgSentTimerTask = new MsgSentTimeOut();
 									msgTimerOn = false; // pq chegou e tal
 									int peppa = transmitidoNaoReconhecido(nextSeqNum);
+									System.out.println("transmitidoNaoReconhecido: " + peppa +
+											"\nlastPacketSent: " + lastPacketSent);
 									if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 										pktTimer = peppa;
 										timeOutInterval = 500;//= timeOutRTT;
@@ -1115,8 +1245,17 @@ public class DGSocket {
 									pktsPerdidos[0]++;
 									pktsPerdidos.notify();
 								}
-								acksDuplicados[circulariza(getackNum(data))]++;
-								if (acksDuplicados[circulariza(getackNum(data))] == 3) { // retransmissão rápida
+//								acksDuplicados[circulariza(getackNum(data))]++;
+								if (recuperacaoRapida) {
+									++congwin;
+								} else {
+									acksDuplicados++;
+								}
+								if (acksDuplicados == 3) { // retransmissão rápida
+									recuperacaoRapida = true;
+									ssthresh = (short) Math.max((congwin >> 1), 1);
+									congwin = (short) (ssthresh + 3);
+									
 									byte[] newData = testeSendBuffer[circulariza(getackNum(data))].getData();
 									rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
 									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
@@ -1129,7 +1268,8 @@ public class DGSocket {
 									socket.send(testeSendBuffer[circulariza(getackNum(data))]); // envia logo segmento perdido
 									System.out.println("Retransmiti rapidamente o pacote " + getackNum(data) +
 											"\nCujo seqNum é " + getSeqNum(testeSendBuffer[circulariza(getackNum(data))].getData()));
-									acksDuplicados[circulariza(getackNum(data))] = 0;
+//									acksDuplicados[circulariza(getackNum(data))] = 0;
+									acksDuplicados = 0;
 									synchronized (msgSentTimer) {
 										if (!msgTimerOn) {
 											pktTimer = getackNum(data);

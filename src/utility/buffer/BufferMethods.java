@@ -120,6 +120,28 @@ public class BufferMethods {
 		dgs.send(intByte, 5); // envia o inteiro com sempre 5 dígitos
 	}
 	
+	public static void longToByteArray(byte[] longByte, long longo) {
+		String str = longo + "";
+		while (str.length() < 20) {
+			str = "0" + str;
+		}
+		for (int i = 0; i < str.length(); i++) {
+			longByte[i] = (byte) str.charAt(i);
+		}
+	}
+	
+	public static void sendLong(long longo, DGSocket dgs) throws IOException {
+		byte[] longByte = new byte[20];
+		longToByteArray(longByte, longo);
+		dgs.send(longByte, 20);
+	}
+	
+	public static long receiveLong(DGSocket dgs) throws SocketException {
+		byte[] longByte = new byte[20];
+		dgs.receive(longByte, 20);
+		return Long.parseLong(byteArraytoString(longByte, 20));
+	}
+	
 	public static void sendFeedBack(int feedback, DGSocket dgs) throws IOException {
 		byte[] feedBackByte = {(byte) feedback};
 		dgs.send(feedBackByte, 1);
