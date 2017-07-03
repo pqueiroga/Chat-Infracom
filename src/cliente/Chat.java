@@ -66,7 +66,7 @@ public class Chat extends JFrame {
 	private Thread msgstatusthread;
 	private Thread msgrcv;
 	private JLabel lblMsgInfo;
-	private int[] pktsPerdidos;
+	private int[] pktsPerdidos; // ponteiro importante
 	
 	/**
 	 * Create the frame.
@@ -264,21 +264,25 @@ public class Chat extends JFrame {
 									String str = it.next();
 									int fP = str.indexOf('('), lP = str.lastIndexOf(')');
 									if (fP != -1 && lP != -1) {
-										String friendIP = str.substring(fP + 1, str.indexOf(','));
-										try {
-											int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
-											friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
-											msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
-											friendOffline = false;
-											msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
-											msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
-											msgstatusthread.start();
-											msgrcv.start();
-											BufferMethods.writeString(usr, friendSocket);
-										} catch (NumberFormatException e) {
-											System.out.println("erro tentando pegar porta");
+										String friendname = str.substring(0, fP - 1);
+										if (friendname.equals(friend)) {
+											String friendIP = str.substring(fP + 1, str.indexOf(','));
+											try {
+												int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
+												friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
+												msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
+												friendOffline = false;
+												msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
+												servicoStatusMsgOk = true;
+												msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
+												msgstatusthread.start();
+												msgrcv.start();
+												BufferMethods.writeString(usr, friendSocket);
+											} catch (NumberFormatException e) {
+												System.out.println("erro tentando pegar porta");
+											}
+											break;
 										}
-										break;
 									}
 								}
 							} else {
@@ -288,13 +292,13 @@ public class Chat extends JFrame {
 									lblMsgInfo.setText("mensagem enviada");
 									sentMsg = true;
 								}
+								synchronized (docMsg) {
+									docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
+											+ " <" + usr + "> ", styleFrom);
+									docMsg.insertString(docMsg.getLength(), txtTypeYourMessage.getText() + '\n', null);
+								}
+								txtTypeYourMessage.setText("");
 							}
-							synchronized (docMsg) {
-								docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
-										+ " <" + usr + ">" + " ", styleFrom);
-								docMsg.insertString(docMsg.getLength(), txtTypeYourMessage.getText() + '\n', null);
-							}
-							txtTypeYourMessage.setText("");
 						} catch (SocketException e) {
 							lblMsgInfo.setForeground(Color.RED);
 							lblMsgInfo.setText(friend + " está offline.");
@@ -338,36 +342,41 @@ public class Chat extends JFrame {
 								String str = it.next();
 								int fP = str.indexOf('('), lP = str.lastIndexOf(')');
 								if (fP != -1 && lP != -1) {
-									String friendIP = str.substring(fP + 1, str.indexOf(','));
-									try {
-										int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
-										friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
-										msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
-										friendOffline = false;
-										msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
-										msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
-										msgstatusthread.start();
-										msgrcv.start();
-										BufferMethods.writeString(usr, friendSocket);
-									} catch (NumberFormatException e) {
-										System.out.println("erro tentando pegar porta");
+									String friendname = str.substring(0, fP - 1);
+									if (friendname.equals(friend)) {
+										String friendIP = str.substring(fP + 1, str.indexOf(','));
+										try {
+											int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
+											friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
+											msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
+											friendOffline = false;
+											msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
+											servicoStatusMsgOk = true;
+											msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
+											msgstatusthread.start();
+											msgrcv.start();
+											BufferMethods.writeString(usr, friendSocket);
+										} catch (NumberFormatException e) {
+											System.out.println("erro tentando pegar porta");
+										}
+										break;
 									}
-									break;
 								}
 							}
+						} else {
+							BufferMethods.writeChatString(txtTypeYourMessage.getText(), friendSocket);
+							synchronized (lblMsgInfo) {
+								lblMsgInfo.setForeground(Color.ORANGE);
+								lblMsgInfo.setText("mensagem enviada");
+								sentMsg = true;
+							}
+							synchronized (docMsg) {
+								docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
+										+ " <" + usr + "> ", styleFrom);
+								docMsg.insertString(docMsg.getLength(), txtTypeYourMessage.getText() + '\n', null);
+							}
+							txtTypeYourMessage.setText("");
 						}
-						BufferMethods.writeChatString(txtTypeYourMessage.getText(), friendSocket);
-						synchronized (lblMsgInfo) {
-							lblMsgInfo.setForeground(Color.ORANGE);
-							lblMsgInfo.setText("mensagem enviada");
-							sentMsg = true;
-						}
-						synchronized (docMsg) {
-							docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
-									+ " <" + usr + ">" + " ", styleFrom);
-							docMsg.insertString(docMsg.getLength(), txtTypeYourMessage.getText() + '\n', null);
-						}
-						txtTypeYourMessage.setText("");
 					} catch (SocketException e) {
 						lblMsgInfo.setForeground(Color.RED);
 						lblMsgInfo.setText(friend + " está offline.");
@@ -507,20 +516,15 @@ public class Chat extends JFrame {
 							}
 						}
 					}
-				} catch (ConnectException | PortUnreachableException e) {
+				} catch (SocketException e) {
 					e.printStackTrace();
 					synchronized (lblMsgInfo) {
 						lblMsgInfo.setForeground(Color.RED);
 						lblMsgInfo.setText("serviço de status de mensagem quebrou");
+						servicoStatusMsgOk = false;
 					}
 					break;
-				} catch (IOException e) {
-					e.printStackTrace();
-					lblMsgInfo.setForeground(Color.RED);
-					lblMsgInfo.setText("serviço de status de mensagem quebrou");
-					servicoStatusMsgOk = false;
-					break;
-				} 
+				}
 			}
 		}
 	}
@@ -549,7 +553,7 @@ public class Chat extends JFrame {
 					}
 					synchronized (docMsg) {
 						docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
-								+ " <" + friend + ">" + " ", styleFrom);
+								+ " <" + friend + "> ", styleFrom);
 						docMsg.insertString(docMsg.getLength(), msg + '\n', null);
 						msgNova = true;
 					}

@@ -11,8 +11,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.net.ConnectException;
-import java.net.SocketException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -38,6 +36,7 @@ public class Profile extends JFrame {
 	/**
 	 * 
 	 */
+//	private int TESTE = 0;
 	private static final long serialVersionUID = 3600369938906919072L;
 	private JPanel contentPane;
 	private JPanel panel;
@@ -45,7 +44,7 @@ public class Profile extends JFrame {
 //	private int servNResponde;
 	private Profile frame;
 	private boolean noServer;
-	private boolean terminado = false;
+//	private boolean terminado = false;
 	private String friendIP;
 	private String friendname;
 	private int friendPort;
@@ -505,7 +504,7 @@ public class Profile extends JFrame {
 		addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent arg0) {
-				terminado = true;
+//				terminado = true;
 				if (!noServer) {
 					try {
 						toServer.logout(username);
@@ -518,6 +517,7 @@ public class Profile extends JFrame {
 						if (!ss.isClosed()) {
 							try {
 								ss.close();
+								System.out.println("Fechei " + ss.toString());
 							} catch (IOException e) {
 								System.out.println("Não consegui fechar " + ss.toString());
 							}
@@ -527,6 +527,7 @@ public class Profile extends JFrame {
 				tUpdatesFL.interrupt();
 				espconv.interrupt();
 				tAtualizaPktsPerdidos.interrupt();
+				System.exit(0);
 			}
 		});
 		
@@ -541,10 +542,31 @@ public class Profile extends JFrame {
 
 		@Override
 		public void run() {
-			while (!terminado) {
+			while (true) {
 		    	ServerAPI toServerConc = new ServerAPI(pktsPerdidos, ip, port);
 		    	try {
 					ArrayList<String> pendentes = toServerConc.pegaSolicitacoesPendentes(username);
+					if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
+						try {
+							int loginstatus = toServerConc.login(username, listenList.get(0).getLocalPort());
+							if (loginstatus == 2) {
+								toServerConc.logout(username);
+								toServerConc.login(username, listenList.get(0).getLocalPort());
+								lblConectividadeComServidor.setForeground(Color.GREEN);
+								lblConectividadeComServidor.setText("Servidor OK");
+								btnAddRemoveFriend.setEnabled(true);
+								noServer = false;
+//							    JOptionPane.showMessageDialog(frame, username + " está logado em outra sessão. O programa"
+//							    		+ " será fechado. Entre em contato conosco se você acha que tem algo"
+//							    		+ " errado com a sua conta.", "Erro",
+//							            JOptionPane.WARNING_MESSAGE);
+//							    System.exit(1);
+							}
+						} catch (GeneralSecurityException e) {
+							// nunca deveria dar
+							e.printStackTrace();
+						}
+					}
 					for (String str : pendentes) {
 						String[] opcoes = {"Sim", "Não"};
 						int yesno = JOptionPane.showOptionDialog(frame, str +" pediu para ser seu amigo(a)."
@@ -587,25 +609,33 @@ public class Profile extends JFrame {
 						}
 													
 					}
-				} catch (ConnectException e) {
+					lblConectividadeComServidor.setForeground(Color.GREEN);
+					lblConectividadeComServidor.setText("Servidor OK");
+					btnAddRemoveFriend.setEnabled(true);
+					noServer = false;
+				} catch (Exception e) {
 					btnAddRemoveFriend.setEnabled(false);
 					noServer = true;
 					lblConectividadeComServidor.setForeground(Color.YELLOW);
 					lblConectividadeComServidor.setText(contatandoServStr);
-				} catch (IOException e) {			
-					e.printStackTrace();
-				} 
+				}
 				try {
 					amigos = toServerConc.pegaAmigos(username);
 					if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
 						try {
 							int loginstatus = toServerConc.login(username, listenList.get(0).getLocalPort());
 							if (loginstatus == 2) {
-							    JOptionPane.showMessageDialog(frame, username + " está logado em outra sessão. O programa"
-							    		+ " será fechado. Entre em contato conosco se você acha que tem algo"
-							    		+ " errado com a sua conta.", "Erro",
-							            JOptionPane.WARNING_MESSAGE);
-							    frame.dispose();
+								toServerConc.logout(username);
+								toServerConc.login(username, listenList.get(0).getLocalPort());
+								lblConectividadeComServidor.setForeground(Color.GREEN);
+								lblConectividadeComServidor.setText("Servidor OK");
+								btnAddRemoveFriend.setEnabled(true);
+								noServer = false;
+//							    JOptionPane.showMessageDialog(frame, username + " está logado em outra sessão. O programa"
+//							    		+ " será fechado. Entre em contato conosco se você acha que tem algo"
+//							    		+ " errado com a sua conta.", "Erro",
+//							            JOptionPane.WARNING_MESSAGE);
+//							    System.exit(1);
 							}
 						} catch (GeneralSecurityException e) {
 							// nunca deveria dar
@@ -630,6 +660,9 @@ public class Profile extends JFrame {
 								System.out.println("erro tentando pegar porta");
 							}
 						}
+						String friendIPLocal = friendIP;
+						int friendPortLocal = friendPort;
+						String friendnameLocal = friendname;
 						btn.addActionListener(new ActionListener() {
 							public void actionPerformed(ActionEvent e1) {
 								if (!friendIP.isEmpty()) {
@@ -640,16 +673,22 @@ public class Profile extends JFrame {
 										// o friendname. quando algum for aberto, eu adiciono à lista.
 										// inicializar o txt field da msg com o que eu ler do arquivo
 										// de histórico da conversa tupla (username, friendname)
-										DGSocket connectionSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
+										
+										DGSocket connectionSocket = new DGSocket(pktsPerdidos, friendIPLocal, friendPortLocal);
 										BufferMethods.writeString(username, connectionSocket);
-										DGSocket msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
-										new Chat(username, friendname, connectionSocket, msgStatusSocket, 
+										DGSocket msgStatusSocket = new DGSocket(pktsPerdidos, friendIPLocal, (friendPortLocal + 1));
+										new Chat(username, friendnameLocal, connectionSocket, msgStatusSocket, 
 												listenList, amigos, pktsPerdidos, true);
 									} catch (Exception e) {
-									    JOptionPane.showMessageDialog(frame, "Não foi possível alcançar " + friendname +
-									    		", " + friendIP + ", " + friendPort, "Erro",
-									            JOptionPane.WARNING_MESSAGE);
 										e.printStackTrace();
+//										TESTE++;
+//										if (TESTE == 3) {
+//										System.out.println("quitando");
+//										System.exit(1);
+									    JOptionPane.showMessageDialog(frame, "Não foi possível alcançar " + friendnameLocal +
+									    		", " + friendIPLocal + ", " + friendPortLocal, "Erro",
+									            JOptionPane.WARNING_MESSAGE);
+//										}
 									}
 								}
 							}
@@ -661,11 +700,6 @@ public class Profile extends JFrame {
 					lblConectividadeComServidor.setText("Servidor OK");
 					btnAddRemoveFriend.setEnabled(true);
 					noServer = false;
-				} catch (ConnectException e) {
-					btnAddRemoveFriend.setEnabled(false);
-					noServer = true;
-					lblConectividadeComServidor.setForeground(Color.YELLOW);
-					lblConectividadeComServidor.setText(contatandoServStr);
 				} catch (Exception e) {
 					btnAddRemoveFriend.setEnabled(false);
 					noServer = true;
@@ -675,7 +709,7 @@ public class Profile extends JFrame {
 				} 
 				try {
 					Thread.sleep(delay);
-				} catch (InterruptedException e) {
+				} catch (Exception e) {
 					e.printStackTrace();
 //					return;
 				}
@@ -686,7 +720,7 @@ public class Profile extends JFrame {
 	
 	class atualizaPktsPerdidos implements Runnable {
 		public void run() {
-			while (!terminado) {
+			while (true) {
 				synchronized (pktsPerdidos) {
 					lblPacotesPerdidos.setText(pktsPerdidos[0] + "");
 					if (pktsPerdidos[0] > 100) {
@@ -716,26 +750,30 @@ public class Profile extends JFrame {
 		}
 		
 		public void run() {
-			while (!terminado) {
+			while (true) {
 				DGSocket connectionSocket = null;
 				try {
 					connectionSocket = listenList.get(0).accept(pktsPerdidos);
 					String friendname = BufferMethods.readString(connectionSocket);
 					DGSocket msgStatusSocket = listenList.get(1).accept(pktsPerdidos);
 					new Chat(username, friendname, connectionSocket, msgStatusSocket, listenList, amigos, pktsPerdidos, false);
-				} catch (SocketException e) {
-					if (connectionSocket != null) {
-						try {
-							connectionSocket.close();
-						} catch (IOException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-					}
+				} //catch (SocketException e) {
+//					if (connectionSocket != null) {
+//						try {
+//							connectionSocket.close();
+//						} catch (IOException e1) {
+//							// TODO Auto-generated catch block
+//							e1.printStackTrace();
+//						}
+//					}
+//					e.printStackTrace();
+//					return;
+			/*	}*/ catch (Exception e) {
+					// TODO Auto-generated catch block
 					e.printStackTrace();
-					return;
-				} catch (IOException e) {
-					e.printStackTrace();
+//					i++;
+//					if (i == 3) 
+//						System.exit(1);
 				}
 			}
 		}

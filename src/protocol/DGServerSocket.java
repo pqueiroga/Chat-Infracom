@@ -17,6 +17,7 @@ public class DGServerSocket {
 	private int ackNum;
 	private DatagramSocket socket;
 	private boolean closed;
+//	private int seqNum;
 	
 	public DGServerSocket(int port) throws SocketException {
 		this.socket = new DatagramSocket(port);
@@ -83,39 +84,68 @@ public class DGServerSocket {
 			if (remainingSize == 0) break;
 		}
 		outToFile.close();
-//		String exe = "xdg-open " + new File(directory).getAbsolutePath() + File.separator + fileName;
-//		System.out.println(exe);
-//		try {
-//			Runtime.getRuntime().exec(exe);
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
+		String exe = "xdg-open " + new File(directory).getAbsolutePath() + File.separator + fileName;
+		System.out.println(exe);
+		try {
+			Runtime.getRuntime().exec(exe);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
-//		teste2.close();
-//		System.out.println("Enquanto fecha eu posso continuar fazendo as coisas");
+		teste2.close();
+		System.out.println("Enquanto fecha eu posso continuar fazendo as coisas");
 	}
 	
-	public DGSocket accept() throws IOException {
+	public DGSocket accept() throws Exception {
+		if (this.closed) {
+			throw new SocketException("DGServerSocket já está fechada.");
+		}
 		return accept(new int[1]);
 	}
 	
-	public DGSocket accept(int[] pktsPerdidos) throws IOException {
+	public DGSocket accept(int[] pktsPerdidos) throws Exception {
+		if (this.closed) {
+			throw new SocketException("DGServerSocket já está fechada.");
+		}
+		
 		byte[] data = new byte[headerLength];
 		DatagramPacket inicia = new DatagramPacket(data, headerLength);
+		boolean aceitou = false;
+		DGSocket retorno2 = null;
 		do {
-			// PASSIVE OPEN
-			socket.receive(inicia);
-		} while (!getSyn(inicia.getData()));
-		
-		System.out.println("Recebi SYN");
-		
-		this.ackNum = getSeqNum(data) + 1;
-		
-		DGSocket retorno2 = new DGSocket(pktsPerdidos, inicia.getAddress().getHostName(), inicia.getPort(), "SYN RECEIVED", this.ackNum);
-//		System.out.println("Vou travar esperando estado hehe");
-//		while (!retorno2.getEstado().equals("ESTABLISHED"));
-//		System.out.println("estado established, vou devolver a socket pra main!");
-
+			do {
+				// PASSIVE OPEN
+				socket.receive(inicia);
+			} while (!getSyn(inicia.getData()));
+			
+			System.out.println("Recebi SYN de " + inicia.getAddress().getHostName() + ", " + 
+			inicia.getPort());
+			
+			this.ackNum = getSeqNum(data) + 1;
+			
+			retorno2 = new DGSocket(pktsPerdidos, inicia.getAddress().getHostName(),
+					inicia.getPort(), "SYN RECEIVED", this.ackNum);
+			System.out.println("Vou travar esperando estado hehe");
+	
+			while (true) {
+				try {
+					Thread.sleep(200);
+					if (retorno2.isClosed()) {
+//						throw new Exception("Erro tosco tentando aceitar conexão");
+						System.out.println("Erro tosco tentando aceitar conexão");
+						break;
+					} 
+					if (retorno2.getEstado().equals("ESTABLISHED")) {
+						aceitou = true;
+						break;
+					}
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			System.out.println("estado established, vou devolver a socket pra main!");
+		} while (!aceitou); // tentativa de dar flush nos pacotes fantasma
 		return retorno2;
 	}
 	
@@ -125,8 +155,14 @@ public class DGServerSocket {
 	}
 		
 	private int getSeqNum(byte[] data) {
-		return (int) (data[0] << 24) + (int) (data[1] << 16) + (int) (data[2] << 8) + (int) data[3];
+//		return (int) (data[0] << 24) + (int) (data[1] << 16) + (int) (data[2] << 8) + (int) data[3];
+		return ((data[0] & 0xFF) << 24) + ((data[1] & 0xFF) << 16) + ((data[2] & 0xFF) << 8) + ((data[3] & 0xFF));
 	}
+	
+//	private int getackNum(byte[] data) {
+////		return (int) (data[4] << 24) + (int) (data[5] << 16) + (int) (data[6] << 8) + (int) data[7];
+//		return ((data[4] & 0xFF) << 24) + ((data[5] & 0xFF) << 16) + ((data[6] & 0xFF) << 8) + ((data[7] & 0xFF));
+//	}
 	
 	private boolean getSyn(byte[] data) {
 		try { 

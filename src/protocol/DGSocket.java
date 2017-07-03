@@ -118,18 +118,21 @@ public class DGSocket {
 			tRecebe.start();
 			// ACTIVE OPEN
 			send(null, 0, (byte) 0, (byte) 1, (byte) 0, (byte) 0); 
+			System.out.println("Eu: " +this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " Depois do send do SYN");
 			// SYN SENT
 			this.ESTADO = "SYN SENT";
 			
 			// recebe syn + ack
-			System.out.println("Vou receber syn + ack");
+			System.out.println(this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " Vou receber syn + ack");
 			receive(data, 1024);
-			System.out.println("Logo depois de receber syn + ack no construtor");
+			System.out.println("Eu: " +this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " Logo depois de receber syn + ack no construtor de " + this.remoteInetAddress.getHostName() + ", " + this.remotePort);
 			break;
 		case "SYN RECEIVED":
+			this.socket = new DatagramSocket();
+			this.socket.connect(InetAddress.getByName(remoteIP), remotePort);
+			System.out.println("conectei");
 			this.ackNum = ackNum;
 			this.rcvBase++;
-			this.socket = new DatagramSocket();
 			this.remoteInetAddress = InetAddress.getByName(remoteIP);
 			this.remotePort = remotePort;
 			tRecebe = new Thread(new RecebeDados());
@@ -140,14 +143,13 @@ public class DGSocket {
 			tRecebe.start();
 			System.out.println("comecei as threads");
 			send(null, 0, (byte) 1, (byte) 1, (byte) 0, (byte) 0); // manda syn + ack
-			System.out.println("mandei syn ack");
-			this.socket.connect(this.remoteInetAddress, this.remotePort);
-			System.out.println("conectei");
+			System.out.println(this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " " +"depois do send de syn ack pra " + this.remoteInetAddress.getHostName() +", " + this.remotePort);
+			
 		}
 	}
 	
 	public void send(byte[] data, int length, byte ack, byte syn, byte fin, byte ackMe) throws IOException {
-		if (ESTADO.equals("SYN SENT") && connectionRefused) {
+		if (!ESTADO.equals("ESTABLISHED") && connectionRefused) {
 			throw new ConnectException("Connection refused (Connection refused)");
 		}
 		if (closed) {
@@ -156,7 +158,7 @@ public class DGSocket {
 		if (portUnreachable) {
 			throw new PortUnreachableException("Provavelmente o end host caiu");
 		}
-		System.out.println("Tentarei ganhar lock de testeSendBuffer no send");
+		System.out.println(this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " " +"Tentarei ganhar lock de testeSendBuffer no send");
 		synchronized (this.testeSendBuffer) {
 			if (Math.abs(this.sendBase - this.nextSeqNum) >= RcvBufferSize) {
 				System.out.println(this.sendBase + ", " + this.nextSeqNum);
@@ -164,10 +166,10 @@ public class DGSocket {
 			while (Math.abs(this.sendBase - this.nextSeqNum) >= RcvBufferSize) {
 				try {
 					System.out.println(this.sendBase + ", " + this.nextSeqNum);
-					System.out.println("APLICAÇÃO ESPERANDO POIS NÃO PODE COLOCAR MAIS NADA NO SEND BUFFER!");
+					System.out.println(this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " " +"APLICAÇÃO ESPERANDO POIS NÃO PODE COLOCAR MAIS NADA NO SEND BUFFER!");
 					this.testeSendBuffer.notifyAll(); // avisa pra caso a envia dados esteja parada
 					this.testeSendBuffer.wait();
-					if (ESTADO.equals("SYN SENT") && connectionRefused) {
+					if (!ESTADO.equals("ESTABLISHED") && connectionRefused) {
 						throw new ConnectException("Connection refused (Connection refused)");
 					}
 					if (closed) {
@@ -195,7 +197,7 @@ public class DGSocket {
 			this.testeSendBufferEstado[circulariza(this.nextSeqNum)] = 1;
 
 			this.nextSeqNum++;
-			System.out.println("Coloquei o pacote " + (this.nextSeqNum - 1) + " no sendBuffer pra ser enviado,"
+			System.out.println(this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " " +"Coloquei o pacote " + (this.nextSeqNum - 1) + " no sendBuffer pra ser enviado,"
 					+ " na posição " + circulariza(this.nextSeqNum - 1) +
 					"\nEle tem " + (testeSendBuffer[circulariza(this.nextSeqNum -1)].getLength() -14) +
 					" bytes de carga útil");
@@ -209,7 +211,7 @@ public class DGSocket {
 	}
 	
 	public int receive(byte[] data, int length) throws SocketException {
-		if (ESTADO.equals("SYN SENT") && connectionRefused) {
+		if (!ESTADO.equals("ESTABLISHED") && connectionRefused) {
 			throw new ConnectException("Connection refused (Connection refused)");
 		}
 		if (closed) {
@@ -253,7 +255,7 @@ public class DGSocket {
 					testeRcvBuffer.wait();
 					System.out.println("portUnreachable: " + portUnreachable + 
 							"\nclosed: " + closed + "\nconnectionRefused: " + connectionRefused);
-					if (ESTADO.equals("SYN SENT") && connectionRefused) {
+					if (!ESTADO.equals("ESTABLISHED") && connectionRefused) {
 						throw new ConnectException("Connection refused (Connection refused)");
 					}
 					if (portUnreachable) {
@@ -303,11 +305,12 @@ public class DGSocket {
 		
 		
 		String directory = "Upload_Pool" + File.separator;
-		File uploadFile = new File("/home/pedro/InfraComProject/Upload_Pool/" + "easyname.mkv");
+		String fileName = "Groovin' Magic.flac";
+		File uploadFile = new File("/home/pedro/InfraComProject/Upload_Pool/" + fileName);
 		if (uploadFile.isFile()) {
 			// diz nome do arquivo que estarei enviando
-			BufferMethods.writeString("easyname.mkv", teste);
-			System.out.println(directory + "easyname.mkv");
+			BufferMethods.writeString(fileName, teste);
+			System.out.println(directory + fileName);
 			// diz quantos bytes estarei enviando
 			System.out.println("fileSize: " + uploadFile.length());
 
@@ -413,7 +416,7 @@ public class DGSocket {
 		public void run() {
 			int i = 0;
 			while (sendBase != nextSeqNum || rcvBase != ackNum) {
-				if (i >= 480 || ESTADO.equals("SYN SENT"))
+				if (i >= 480 || !ESTADO.equals("ESTABLISHED"))
 					break; // esperar até 4 minutos hehehe.
 				try {
 					Thread.sleep(500);
@@ -520,7 +523,7 @@ public class DGSocket {
 										ackMeTimerOn = false;
 //									}
 								}
-								System.out.println("Enviei o pacote " + (lastPacketSent + 1) + "\nEle tem " + (testeSendBuffer[circulariza(lastPacketSent + 1)].getLength() -14) +
+								System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Enviei o pacote " + (lastPacketSent + 1) + "\nEle tem " + (testeSendBuffer[circulariza(lastPacketSent + 1)].getLength() -14) +
 										" bytes de carga útil");
 								socket.send(testeSendBuffer[circulariza(lastPacketSent + 1)]);
 								++lastPacketSent;
@@ -561,6 +564,7 @@ public class DGSocket {
 							}
 						}
 					} catch (PortUnreachableException e1) {
+						e1.printStackTrace();
 						portUnreachable = true;
 						try {
 							close();
@@ -620,7 +624,9 @@ public class DGSocket {
 						e.printStackTrace();
 					}
 				}
-			} catch (Exception e) {}
+			} catch (Exception e) {
+				e.printStackTrace(); 
+			}
 		}
 	}
 	
@@ -631,18 +637,18 @@ public class DGSocket {
 					pktsPerdidos[0]++;
 					pktsPerdidos.notify();
 				}
-				ssthresh = (short) (congwin >> 1);
+				ssthresh = (short) Math.max((congwin >> 1), 1);
 				congwin = 1;
 				acksDuplicados = 0;
 				recuperacaoRapida = false;
-				if ((ESTADO.equals("SYN SENT") && timeoutTries > 2) || timeoutTries > 4) {
-					System.out.println("end host não responde.");
+				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 2) || timeoutTries > 4) {
+					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"end host não responde.");
 					connectionRefused = true;
 					close();
 					return;
 				}
 				synchronized (msgSentTimer) {
-					System.out.println("Pacote " + pktTimer + " deu timeout.");
+					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Pacote " + pktTimer + " deu timeout.");
 					try {
 //						try {
 //							testeMsgSentTimerTask.cancel();
@@ -674,6 +680,7 @@ public class DGSocket {
 							msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 						}
 					} catch (PortUnreachableException e) {
+						e.printStackTrace();
 						portUnreachable = true;
 						try {
 							close();
@@ -727,7 +734,9 @@ public class DGSocket {
 						e.printStackTrace();
 					}
 				}
-			} catch (Exception e) {}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -803,7 +812,9 @@ public class DGSocket {
 					switch (ESTADO) {
 					case "SYN RECEIVED":
 						if (getAck(data)) {
-							System.out.println("Recebi ack");
+							System.out.println("Eu: " + socket.getLocalAddress().getHostName() +
+									", " + socket.getLocalPort() + " Recebi ack de " + dp.getAddress().getHostName() + ", " +
+									dp.getPort());
 
 							synchronized (msgSentTimer) {
 								for (int i = sendBase; i < getackNum(data); i++) {
@@ -842,10 +853,12 @@ public class DGSocket {
 						continue;
 					case "SYN SENT":
 						if (getSyn(data) && getAck(data)) {
-							System.out.println("Recebi syn-ack");
+							System.out.println("Eu: " + socket.getLocalAddress().getHostName() +
+									", " + socket.getLocalPort() + " Recebi syn-ack de " + dp.getAddress().getHostName() + ", " +
+									dp.getPort());
 							remotePort = dp.getPort();
 							remoteInetAddress = dp.getAddress();
-
+							socket.connect(remoteInetAddress, remotePort);
 							synchronized (msgSentTimer) {
 								for (int i = sendBase; i < getackNum(data); i++) {
 									testeSendBufferEstado[circulariza(i)] = 3;
@@ -874,7 +887,7 @@ public class DGSocket {
 									msgTimerOn = true;
 								}
 							}
-							socket.connect(remoteInetAddress, remotePort);
+//							socket.connect(remoteInetAddress, remotePort);
 							byte[] ack = new byte[headerLength];
 							lastPacketRcvd = ackNum;
 							ackNum++;
@@ -900,9 +913,9 @@ public class DGSocket {
 
 								}
 							}
-							
+							rcvLastAcked = ackNum - 1;
 							socket.send(ACK);
-							System.out.println("Mandei o ack " + ackNum);
+							System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Mandei o ack " + ackNum);
 							synchronized (testeRcvBuffer) {
 								testeRcvBuffer[circulariza(getSeqNum(data))] = dp;
 								// // testeRcvBufferEstado[circulariza(getSeqNum(data))] = 2;
@@ -986,13 +999,14 @@ public class DGSocket {
 										DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 										// envio imediato de um ACK
 										socket.send(ACK);
-										System.out.println("Mandei o ack " + ackNum);
+										rcvLastAcked = ackNum - 1;
+										System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Mandei o ack " + ackNum);
 										for (int i = 0; i < ackNum; i++) { // ack cumulativo enviado, atualizar
 											// testeRcvBufferEstado[circulariza(i)] = 2;
 										}
-									} else if (rcvLastAcked == ackNum - 1) {										
+									} else if (rcvLastAcked == ackNum - 2) {										
 
-										System.out.println("Coloquei ack " + ackNum+ " como delayed ack");
+										System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Coloquei ack " + ackNum+ " como delayed ack");
 										// segmento na ordem, todos os dados até o número de seq esperado já tiveram seu ACK enviado
 										synchronized (delayedAckTimer) {
 											ackTimer = ackNum;
@@ -1023,7 +1037,7 @@ public class DGSocket {
 										}
 											
 										System.out.println("segmento na ordem, tem outro na ordem esperando por transmissão de ack");
-
+										System.out.println("rcvLastAcked: " + rcvLastAcked);
 										byte[] ack = new byte[headerLength];
 										rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
 										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
@@ -1124,13 +1138,13 @@ public class DGSocket {
 									}
 									
 									socket.send(ACK);
-									System.out.println("Mandei o ack " + ackNum);
+									System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Mandei o ack " + ackNum);
 								}
 							}
 						}
 						synchronized (testeSendBuffer) {
 							if (getAckMe(data) && getAck(data)) {
-								System.out.println("Recebi um ack-ackme");
+								System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Recebi um ack-ackme");
 								synchronized (ackMeTimer) {
 									if (ackMeTimerOn) {
 										testeAckMeTimerTask.cancel();
@@ -1191,7 +1205,7 @@ public class DGSocket {
 								}
 								acksDuplicados = 0;
 								
-								System.out.println("Recebi ack " + getackNum(data));
+								System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Recebi ack " + getackNum(data));
 								if (getackNum(data) > packetSample) {
 									timeAcked = System.currentTimeMillis();
 									sampleRTT = timeAcked - timeSent;
@@ -1208,7 +1222,7 @@ public class DGSocket {
 									testeSendBufferEstado[circulariza(i)] = 3;
 								}
 								sendBase = getackNum(data);
-								System.out.println("sendBase agora é " + sendBase);
+								System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"sendBase agora é " + sendBase);
 
 								synchronized (msgSentTimer) {
 									
@@ -1291,6 +1305,7 @@ public class DGSocket {
 						}
 					}
 				} catch (PortUnreachableException e1) {
+					e1.printStackTrace();
 					portUnreachable = true;
 					try {
 						close();

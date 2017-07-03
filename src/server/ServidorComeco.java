@@ -1,9 +1,14 @@
 package server;
 
 import java.io.IOException;
+import java.net.BindException;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
+import javax.swing.JButton;
+import javax.swing.JTextField;
 
 import protocol.DGServerSocket;
 import protocol.DGSocket;
@@ -16,31 +21,43 @@ import protocol.DGSocket;
 public class ServidorComeco implements Runnable {
 	ArrayList<String> listaDeUsuarios;
 	DGServerSocket servidor;
+	JTextField txtPorta;
+	JButton btnIniciar;
 	
-	public ServidorComeco(ArrayList<String> listaDeUsuarios, DGServerSocket wSocket) {
+	public ServidorComeco(ArrayList<String> listaDeUsuarios, DGServerSocket wSocket, JTextField txtPorta, JButton btnIniciar) {
 		this.listaDeUsuarios = listaDeUsuarios;
 		this.servidor = wSocket;
+		this.txtPorta = txtPorta;
+		this.btnIniciar = btnIniciar;
 	}
 	
 	public void run() {
-//			File usuariosCadastrados = new File("testeDatabase");
-//			if (!usuariosCadastrados.isFile()) {
-//				FileWriter fw = new FileWriter(usuariosCadastrados);
-//				fw.write(0 + "\n");
-//				fw.close();
-//			}
-			ConcurrentMap<String, Long> timer = new ConcurrentHashMap<String, Long>();
-			(new Thread(new TimeOutThread(timer))).start();
-			while (true) {
-				try {
-					DGSocket connectionSocket = servidor.accept();
-					(new Thread(new ServidorConta(timer,
-							connectionSocket, listaDeUsuarios))).start();
-				} catch (IOException e) {
-					System.err.println("ERRO: Erro desconhecido ao aceitar conexão.");
-					e.printStackTrace();
+		ConcurrentMap<String, Long> timer = new ConcurrentHashMap<String, Long>();
+		(new Thread(new TimeOutThread(timer))).start();
+		while (true) {
+			try {
+				DGSocket connectionSocket = servidor.accept();
+				(new Thread(new ServidorConta(timer,
+						connectionSocket, listaDeUsuarios))).start();
+			} catch (SocketException e) {
+				e.printStackTrace();
+				if (e.getMessage().equals("DGServerSocket já está fechada.")) {
+					try {
+						servidor = new DGServerSocket(servidor.getLocalPort());
+					} catch (Exception e1) {
+						txtPorta.setText("Porta");
+						txtPorta.setEnabled(true);
+						btnIniciar.setEnabled(true);
+						e1.printStackTrace();
+						return; // a ideia é matar essa thread daqui pra ser revivida com um
+						// apertar de botão ou enter, se ela der merda hehe.
+					}
 				}
+			} catch (Exception e) {
+				System.err.println("ERRO: Erro desconhecido ao aceitar conexão.");
+				e.printStackTrace();
 			}
+		}
 	}
 	
 	class TimeOutThread implements Runnable {

@@ -128,7 +128,8 @@ public class ServerGUI extends JFrame {
 					int port = Integer.parseInt(txtPorta.getText());
 					wSocket = new DGServerSocket(port);
 					(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
-					(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
+					(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
+							btnIniciar))).start();
 					setTitle("Funcionando na porta " + port);
 //					(new Thread(new listTester())).start();
 					btnIniciar.setEnabled(false);
@@ -153,7 +154,8 @@ public class ServerGUI extends JFrame {
 						int port = Integer.parseInt(txtPorta.getText());
 						wSocket = new DGServerSocket(port);
 						(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
-						(new Thread(new ServidorComeco(listaDeUsuarios, wSocket))).start();
+						(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
+								btnIniciar))).start();
 						setTitle("Funcionando na porta " + port);
 //						(new Thread(new listTester())).start();
 						btnIniciar.setEnabled(false);
