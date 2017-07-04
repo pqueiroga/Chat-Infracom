@@ -88,6 +88,7 @@ public class Profile extends JFrame {
 	// TODO lembrar de mudar para nosso protocolo
 	public Profile(ArrayList<DGServerSocket> listenList, String username, String ip, int port) {
 		setResizable(false);
+		setTitle(username);
 		this.chats = new ConcurrentHashMap<String, Chat>();
 		this.listenList = listenList;
 		this.username = username;

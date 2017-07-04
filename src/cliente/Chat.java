@@ -444,121 +444,125 @@ public class Chat extends JFrame {
 		
 		lblEasteregg.addMouseListener(new MouseAdapter() {
 			public void mouseClicked(MouseEvent e) {
-				File file = new File("historicos_" + usr + File.separator + friend);
-				try {
-					file.createNewFile();
-					try (PrintWriter pw = new PrintWriter(file)) {
-						pw.print(Chat.this.getDocMsg());
-					} catch (BadLocationException ex) {
-						// TODO Auto-generated catch block
-						ex.printStackTrace();
-					}
-				} catch (IOException ex) {
-					// TODO Auto-generated catch block
-					ex.printStackTrace();
-				}
-				
-				scrollPane.remove(msgTextPane);
-				contentPane.remove(scrollPane);
-				txtTypeScrollPane.remove(txtTypeYourMessage);
-				contentPane.remove(txtTypeScrollPane);
-				contentPane.remove(lblMsgInfo);
-				
-				scrollPane = new JScrollPane();
-				GridBagConstraints gbc_scrollPane = new GridBagConstraints();
-				gbc_scrollPane.fill = GridBagConstraints.BOTH;
-				gbc_scrollPane.insets = new Insets(0, 0, 5, 5);
-				gbc_scrollPane.gridx = 0;
-				gbc_scrollPane.gridy = 0;
-				contentPane.add(scrollPane, gbc_scrollPane);
-				msgTextPane = new JTextPane();
-				msgTextPane.setToolTipText("Área de texto para conversas");
-				try {
-					File file2 = new File("historicos_" + usr + File.separator + friend);
-					byte[] encoded = Files.readAllBytes(Paths.get(file2.getAbsolutePath()));
-					msgTextPane.setForeground(Color.GRAY);
-					msgTextPane.setText(new String(encoded, "UTF-8"));
-					msgTextPane.setForeground(Color.BLACK);
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-				
-				msgTextPane.setEditable(false);
-				scrollPane.setViewportView(msgTextPane);
-				
-				docMsg = msgTextPane.getStyledDocument();
-				styleFrom = msgTextPane.addStyle("FROM", null);
-				StyleConstants.setBold(styleFrom, true);
-				
-				txtTypeYourMessage = new JTextArea();
-				txtTypeYourMessage.setToolTipText("Digite uma mensagem aqui...");
-				txtTypeYourMessage.setLineWrap(true);
-				txtTypeYourMessage.setWrapStyleWord(true);
-				txtTypeScrollPane = new JScrollPane(txtTypeYourMessage);
-				
-				lblMsgInfo = new JLabel("");
-				lblMsgInfo.setToolTipText("Estado da comunicação entre vocês");
-				lblMsgInfo.setFont(new Font("Dialog", Font.BOLD, 10));
-				lblMsgInfo.setVerticalAlignment(SwingConstants.TOP);
-				GridBagConstraints gbc_lblMsgInfo = new GridBagConstraints();
-				gbc_lblMsgInfo.anchor = GridBagConstraints.NORTHWEST;
-				gbc_lblMsgInfo.insets = new Insets(0, 0, 5, 5);
-				gbc_lblMsgInfo.gridx = 0;
-				gbc_lblMsgInfo.gridy = 1;
-				contentPane.add(lblMsgInfo, gbc_lblMsgInfo);
-				
-				txtTypeYourMessage.setText(txtTypeMsg);
-				txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
-				GridBagConstraints gbc_txtTypeYourMessage = new GridBagConstraints();
-				gbc_txtTypeYourMessage.gridheight = 2;
-				gbc_txtTypeYourMessage.fill = GridBagConstraints.BOTH;
-				gbc_txtTypeYourMessage.insets = new Insets(0, 0, 0, 5);
-				gbc_txtTypeYourMessage.gridx = 0;
-				gbc_txtTypeYourMessage.gridy = 2;
-				contentPane.add(txtTypeScrollPane, gbc_txtTypeYourMessage);
-				
-				txtTypeYourMessage.addKeyListener(new KeyAdapter() {
-
-					@Override
-					public void keyReleased(KeyEvent arg0) {
-						if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
-							txtTypeYourMessage.setEnabled(true);
-							txtTypeYourMessage.setEditable(true);
-							txtTypeYourMessage.setText(txtTypeYourMessage.getText().trim());
-							enviaMsg(usr, friend, amigos, docMsg, styleFrom);
-						}
-						feedbackaMsgStatus();
-					}
-				});
-				
-				txtTypeYourMessage.addFocusListener(new FocusListener() {
-					public void focusLost(FocusEvent e) {
-						txtTypeYourMessage.setEnabled(true);
-						txtTypeYourMessage.setEditable(true);
-						String txtMessage = txtTypeYourMessage.getText().trim();
-						if (txtMessage.isEmpty()) {
-							txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
-							txtTypeYourMessage.setText(txtTypeMsg);
-						}
-					}
-					public void focusGained(FocusEvent e) {
-						txtTypeYourMessage.setEnabled(true);
-						txtTypeYourMessage.setEditable(true);
-						String txtMessage = txtTypeYourMessage.getText().trim();
-						if (txtMessage.isEmpty() || 
-								(txtMessage.equals(txtTypeMsg) &&
-								txtTypeYourMessage.getForeground().equals(Color.LIGHT_GRAY))) {
-							txtTypeYourMessage.setText("");
-							txtTypeYourMessage.setForeground(Color.BLACK);
-						}
-						feedbackaMsgStatus();
-					}
-				});
-				scrollPane.repaint();
-				scrollPane.validate();
-				
-				contentPane.repaint();
-				contentPane.validate();
+				String[] opcoes = {"Ok", "Ok"};
+				JOptionPane.showOptionDialog(Chat.this, "Espero que tenha voltado ao normal agora."
+						, "JFileChooser te bugou?",JOptionPane.YES_NO_OPTION,
+						JOptionPane.PLAIN_MESSAGE, null, opcoes, opcoes[0]);
+//				File file = new File("historicos_" + usr + File.separator + friend);
+//				try {
+//					file.createNewFile();
+//					try (PrintWriter pw = new PrintWriter(file)) {
+//						pw.print(Chat.this.getDocMsg());
+//					} catch (BadLocationException ex) {
+//						// TODO Auto-generated catch block
+//						ex.printStackTrace();
+//					}
+//				} catch (IOException ex) {
+//					// TODO Auto-generated catch block
+//					ex.printStackTrace();
+//				}
+//				
+//				scrollPane.remove(msgTextPane);
+//				contentPane.remove(scrollPane);
+//				txtTypeScrollPane.remove(txtTypeYourMessage);
+//				contentPane.remove(txtTypeScrollPane);
+//				contentPane.remove(lblMsgInfo);
+//				
+//				scrollPane = new JScrollPane();
+//				GridBagConstraints gbc_scrollPane = new GridBagConstraints();
+//				gbc_scrollPane.fill = GridBagConstraints.BOTH;
+//				gbc_scrollPane.insets = new Insets(0, 0, 5, 5);
+//				gbc_scrollPane.gridx = 0;
+//				gbc_scrollPane.gridy = 0;
+//				contentPane.add(scrollPane, gbc_scrollPane);
+//				msgTextPane = new JTextPane();
+//				msgTextPane.setToolTipText("Área de texto para conversas");
+//				try {
+//					File file2 = new File("historicos_" + usr + File.separator + friend);
+//					byte[] encoded = Files.readAllBytes(Paths.get(file2.getAbsolutePath()));
+//					msgTextPane.setForeground(Color.GRAY);
+//					msgTextPane.setText(new String(encoded, "UTF-8"));
+//					msgTextPane.setForeground(Color.BLACK);
+//				} catch (Exception ex) {
+//					ex.printStackTrace();
+//				}
+//				
+//				msgTextPane.setEditable(false);
+//				scrollPane.setViewportView(msgTextPane);
+//				
+//				docMsg = msgTextPane.getStyledDocument();
+//				styleFrom = msgTextPane.addStyle("FROM", null);
+//				StyleConstants.setBold(styleFrom, true);
+//				
+//				txtTypeYourMessage = new JTextArea();
+//				txtTypeYourMessage.setToolTipText("Digite uma mensagem aqui...");
+//				txtTypeYourMessage.setLineWrap(true);
+//				txtTypeYourMessage.setWrapStyleWord(true);
+//				txtTypeScrollPane = new JScrollPane(txtTypeYourMessage);
+//				
+//				lblMsgInfo = new JLabel("");
+//				lblMsgInfo.setToolTipText("Estado da comunicação entre vocês");
+//				lblMsgInfo.setFont(new Font("Dialog", Font.BOLD, 10));
+//				lblMsgInfo.setVerticalAlignment(SwingConstants.TOP);
+//				GridBagConstraints gbc_lblMsgInfo = new GridBagConstraints();
+//				gbc_lblMsgInfo.anchor = GridBagConstraints.NORTHWEST;
+//				gbc_lblMsgInfo.insets = new Insets(0, 0, 5, 5);
+//				gbc_lblMsgInfo.gridx = 0;
+//				gbc_lblMsgInfo.gridy = 1;
+//				contentPane.add(lblMsgInfo, gbc_lblMsgInfo);
+//				
+//				txtTypeYourMessage.setText(txtTypeMsg);
+//				txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
+//				GridBagConstraints gbc_txtTypeYourMessage = new GridBagConstraints();
+//				gbc_txtTypeYourMessage.gridheight = 2;
+//				gbc_txtTypeYourMessage.fill = GridBagConstraints.BOTH;
+//				gbc_txtTypeYourMessage.insets = new Insets(0, 0, 0, 5);
+//				gbc_txtTypeYourMessage.gridx = 0;
+//				gbc_txtTypeYourMessage.gridy = 2;
+//				contentPane.add(txtTypeScrollPane, gbc_txtTypeYourMessage);
+//				
+//				txtTypeYourMessage.addKeyListener(new KeyAdapter() {
+//
+//					@Override
+//					public void keyReleased(KeyEvent arg0) {
+//						if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
+//							txtTypeYourMessage.setEnabled(true);
+//							txtTypeYourMessage.setEditable(true);
+//							txtTypeYourMessage.setText(txtTypeYourMessage.getText().trim());
+//							enviaMsg(usr, friend, amigos, docMsg, styleFrom);
+//						}
+//						feedbackaMsgStatus();
+//					}
+//				});
+//				
+//				txtTypeYourMessage.addFocusListener(new FocusListener() {
+//					public void focusLost(FocusEvent e) {
+//						txtTypeYourMessage.setEnabled(true);
+//						txtTypeYourMessage.setEditable(true);
+//						String txtMessage = txtTypeYourMessage.getText().trim();
+//						if (txtMessage.isEmpty()) {
+//							txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
+//							txtTypeYourMessage.setText(txtTypeMsg);
+//						}
+//					}
+//					public void focusGained(FocusEvent e) {
+//						txtTypeYourMessage.setEnabled(true);
+//						txtTypeYourMessage.setEditable(true);
+//						String txtMessage = txtTypeYourMessage.getText().trim();
+//						if (txtMessage.isEmpty() || 
+//								(txtMessage.equals(txtTypeMsg) &&
+//								txtTypeYourMessage.getForeground().equals(Color.LIGHT_GRAY))) {
+//							txtTypeYourMessage.setText("");
+//							txtTypeYourMessage.setForeground(Color.BLACK);
+//						}
+//						feedbackaMsgStatus();
+//					}
+//				});
+//				scrollPane.repaint();
+//				scrollPane.validate();
+//				
+//				contentPane.repaint();
+//				contentPane.validate();
 				
 			}
 		});
