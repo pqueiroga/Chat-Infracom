@@ -10,10 +10,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.BoxLayout;
@@ -26,6 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 
+import cliente.Chat.BaixaArquivo;
 import protocol.DGServerSocket;
 import protocol.DGSocket;
 import utility.buffer.BufferMethods;
@@ -59,6 +62,8 @@ public class Profile extends JFrame {
 	private JButton btnAddRemoveFriend;
 	private JLabel lblPacotesPerdidos;
 	
+	private ConcurrentHashMap<String, Chat> chats;
+	
 	private int[] pktsPerdidos = new int[1];
 	/**
 	 * Create the frame.
@@ -79,6 +84,7 @@ public class Profile extends JFrame {
 	// TODO lembrar de mudar para nosso protocolo
 	public Profile(ArrayList<DGServerSocket> listenList, String username, String ip, int port) {
 		setResizable(false);
+		this.chats = new ConcurrentHashMap<String, Chat>();
 		this.listenList = listenList;
 		this.username = username;
 		this.ip = ip;
@@ -90,6 +96,8 @@ public class Profile extends JFrame {
 		this.addRemoveAmigo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		this.contatandoServStr = "Tentando contatar servidor";
 		ServerAPI toServer = new ServerAPI(pktsPerdidos, ip, port);
+		
+		this.amigos = new ArrayList<String>();
 		
 		int randomNum = ThreadLocalRandom.current().nextInt(3, 9 + 1);
 		Color cor;
@@ -201,6 +209,9 @@ public class Profile extends JFrame {
 			cor = null;	
 		}
 		
+		File folder = new File("./Download_Pool/");
+		folder.mkdir();
+		
 		panel = new JPanel();
 		panel.setBackground(cor);
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -281,6 +292,8 @@ public class Profile extends JFrame {
 		tUpdatesFL.start();
 		Thread tAtualizaPktsPerdidos = new Thread(new atualizaPktsPerdidos());
 		tAtualizaPktsPerdidos.start();
+		Thread tEsperaArquivo = new Thread(new EsperaArquivos());
+		tEsperaArquivo.start();
 //		ActionListener updatesFL = new ActionListener() {
 //			public void actionPerformed(ActionEvent evt) {
 //				if (!noServer) {
@@ -527,6 +540,7 @@ public class Profile extends JFrame {
 				tUpdatesFL.interrupt();
 				espconv.interrupt();
 				tAtualizaPktsPerdidos.interrupt();
+				tEsperaArquivo.interrupt();
 				System.exit(0);
 			}
 		});
@@ -620,7 +634,12 @@ public class Profile extends JFrame {
 					lblConectividadeComServidor.setText(contatandoServStr);
 				}
 				try {
-					amigos = toServerConc.pegaAmigos(username);
+					amigos.clear();
+					ArrayList<String> temp = toServerConc.pegaAmigos(username);
+					for (String gambiarra : temp) {
+						amigos.add(gambiarra);
+					}
+//					amigos = toServerConc.pegaAmigos(username);
 					if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
 						try {
 							int loginstatus = toServerConc.login(username, listenList.get(0).getLocalPort());
@@ -673,12 +692,17 @@ public class Profile extends JFrame {
 										// o friendname. quando algum for aberto, eu adiciono à lista.
 										// inicializar o txt field da msg com o que eu ler do arquivo
 										// de histórico da conversa tupla (username, friendname)
-										
-										DGSocket connectionSocket = new DGSocket(pktsPerdidos, friendIPLocal, friendPortLocal);
-										BufferMethods.writeString(username, connectionSocket);
-										DGSocket msgStatusSocket = new DGSocket(pktsPerdidos, friendIPLocal, (friendPortLocal + 1));
-										new Chat(username, friendnameLocal, connectionSocket, msgStatusSocket, 
-												listenList, amigos, pktsPerdidos, true);
+										if (chats.containsKey(friendnameLocal)) {
+											chats.get(friendnameLocal).setVisible(true);
+										} else {
+											DGSocket connectionSocket = new DGSocket(pktsPerdidos, friendIPLocal, friendPortLocal);
+											BufferMethods.writeString(username, connectionSocket);
+											BufferMethods.sendInt(Profile.this.listenList.get(2).getLocalPort(), connectionSocket);
+											DGSocket msgStatusSocket = new DGSocket(pktsPerdidos, friendIPLocal, (friendPortLocal + 1));
+											Chat novoChat = new Chat(username, friendnameLocal, friendPortLocal + 2, connectionSocket,
+													msgStatusSocket, listenList, amigos, pktsPerdidos, true);
+											chats.put(friendnameLocal, novoChat);
+										}
 									} catch (Exception e) {
 										e.printStackTrace();
 //										TESTE++;
@@ -755,8 +779,18 @@ public class Profile extends JFrame {
 				try {
 					connectionSocket = listenList.get(0).accept(pktsPerdidos);
 					String friendname = BufferMethods.readString(connectionSocket);
+					int uploadPort = BufferMethods.receiveInt(connectionSocket);
 					DGSocket msgStatusSocket = listenList.get(1).accept(pktsPerdidos);
-					new Chat(username, friendname, connectionSocket, msgStatusSocket, listenList, amigos, pktsPerdidos, false);
+					if (chats.containsKey(friendname)) {
+						chats.get(friendname).setStuff(uploadPort, connectionSocket, msgStatusSocket);
+					} else {
+						Chat novoChat = new Chat(username, friendname, uploadPort, connectionSocket, msgStatusSocket,
+								listenList, amigos, pktsPerdidos, false);
+						chats.put(friendname, novoChat);
+					}
+//					JOptionPane.showMessageDialog(Profile.this,
+//							"Recebi pedido de começar conversa de " + friendname,
+//							"Aha!", JOptionPane.WARNING_MESSAGE);
 				} //catch (SocketException e) {
 //					if (connectionSocket != null) {
 //						try {
@@ -774,6 +808,22 @@ public class Profile extends JFrame {
 //					i++;
 //					if (i == 3) 
 //						System.exit(1);
+				}
+			}
+		}
+	}
+	
+	class EsperaArquivos implements Runnable {
+		public void run() {
+			while (true) {
+				DGSocket connectionSocket = null;
+				try {
+					connectionSocket = listenList.get(2).accept(pktsPerdidos);
+					String friendUploader = BufferMethods.readString(connectionSocket);
+					chats.get(friendUploader).setVisible(true);
+					chats.get(friendUploader).comecaBaixaArquivos(connectionSocket);
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 			}
 		}

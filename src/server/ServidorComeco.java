@@ -1,5 +1,6 @@
 package server;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.SocketException;
@@ -8,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JTextField;
 
 import protocol.DGServerSocket;
@@ -23,20 +25,27 @@ public class ServidorComeco implements Runnable {
 	DGServerSocket servidor;
 	JTextField txtPorta;
 	JButton btnIniciar;
+	int[] pktsPerdidos;
+	JLabel lblPacotesperdidos;
 	
-	public ServidorComeco(ArrayList<String> listaDeUsuarios, DGServerSocket wSocket, JTextField txtPorta, JButton btnIniciar) {
+	public ServidorComeco(ArrayList<String> listaDeUsuarios, DGServerSocket wSocket,
+			JTextField txtPorta, JButton btnIniciar, JLabel lblPacotesPerdidos) {
 		this.listaDeUsuarios = listaDeUsuarios;
 		this.servidor = wSocket;
 		this.txtPorta = txtPorta;
 		this.btnIniciar = btnIniciar;
+		this.pktsPerdidos = new int[1];
+		this.lblPacotesperdidos = lblPacotesPerdidos;
+		
 	}
 	
 	public void run() {
 		ConcurrentMap<String, Long> timer = new ConcurrentHashMap<String, Long>();
 		(new Thread(new TimeOutThread(timer))).start();
+		(new Thread(new atualizaPacotesPerdidosHehe())).start();
 		while (true) {
 			try {
-				DGSocket connectionSocket = servidor.accept();
+				DGSocket connectionSocket = servidor.accept(pktsPerdidos);
 				(new Thread(new ServidorConta(timer,
 						connectionSocket, listaDeUsuarios))).start();
 			} catch (SocketException e) {
@@ -56,6 +65,27 @@ public class ServidorComeco implements Runnable {
 			} catch (Exception e) {
 				System.err.println("ERRO: Erro desconhecido ao aceitar conexão.");
 				e.printStackTrace();
+			}
+		}
+	}
+	
+	class atualizaPacotesPerdidosHehe implements Runnable {
+		public void run() {
+			while (true) {
+				synchronized (pktsPerdidos) {
+					lblPacotesperdidos.setText(pktsPerdidos[0] + "");
+					if (pktsPerdidos[0] > 100) {
+						lblPacotesperdidos.setForeground(Color.RED);
+					} else if (pktsPerdidos[0] > 50) {
+						lblPacotesperdidos.setForeground(Color.YELLOW);
+					}
+					try {
+						pktsPerdidos.wait();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
 			}
 		}
 	}

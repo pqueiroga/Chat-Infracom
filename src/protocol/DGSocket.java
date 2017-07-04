@@ -449,12 +449,21 @@ public class DGSocket {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			ackMeTimer.cancel();
-			delayedAckTimer.cancel();
-			msgSentTimer.cancel();
+			try {
+				ackMeTimer.cancel();
+			} catch (Exception e) {}
+			try {
+				delayedAckTimer.cancel();
+			} catch (Exception e) {
+				msgSentTimer.cancel();
+			}
 			closed = true;
-			tEnvia.interrupt();
-			tRecebe.interrupt();
+			try {
+				tEnvia.interrupt();
+			} catch (Exception e) {}
+			try {
+				tRecebe.interrupt();
+			} catch (Exception e) {}
 //			tEnvia.join();
 //			tRecebe.join();
 			socket.close();

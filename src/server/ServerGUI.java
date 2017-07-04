@@ -70,6 +70,7 @@ public class ServerGUI extends JFrame {
 	 * @throws ClassNotFoundException 
 	 */
 	public ServerGUI() throws ClassNotFoundException, InstantiationException, IllegalAccessException, UnsupportedLookAndFeelException {
+		setResizable(false);
 		listaDeUsuarios = new ArrayList<String>();
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 300, 485);
@@ -96,7 +97,7 @@ public class ServerGUI extends JFrame {
 		GridBagConstraints gbc_scrollPane = new GridBagConstraints();
 		gbc_scrollPane.gridheight = 4;
 		gbc_scrollPane.gridwidth = 3;
-		gbc_scrollPane.insets = new Insets(0, 0, 5, 5);
+		gbc_scrollPane.insets = new Insets(0, 0, 0, 5);
 		gbc_scrollPane.fill = GridBagConstraints.BOTH;
 		gbc_scrollPane.gridx = 0;
 		gbc_scrollPane.gridy = 1;
@@ -121,6 +122,13 @@ public class ServerGUI extends JFrame {
 		splitPane.setRightComponent(txtPorta);
 		txtPorta.setColumns(2);
 		
+		JLabel lblPacotesperdidos = new JLabel("0");
+		GridBagConstraints gbc_lblPacotesperdidos = new GridBagConstraints();
+		gbc_lblPacotesperdidos.anchor = GridBagConstraints.EAST;
+		gbc_lblPacotesperdidos.gridx = 3;
+		gbc_lblPacotesperdidos.gridy = 4;
+		contentPane.add(lblPacotesperdidos, gbc_lblPacotesperdidos);
+		
 		JButton btnIniciar = new JButton("Iniciar");
 		btnIniciar.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -129,7 +137,7 @@ public class ServerGUI extends JFrame {
 					wSocket = new DGServerSocket(port);
 					(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 					(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
-							btnIniciar))).start();
+							btnIniciar, lblPacotesperdidos))).start();
 					setTitle("Funcionando na porta " + port);
 //					(new Thread(new listTester())).start();
 					btnIniciar.setEnabled(false);
@@ -155,7 +163,7 @@ public class ServerGUI extends JFrame {
 						wSocket = new DGServerSocket(port);
 						(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 						(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
-								btnIniciar))).start();
+								btnIniciar, lblPacotesperdidos))).start();
 						setTitle("Funcionando na porta " + port);
 //						(new Thread(new listTester())).start();
 						btnIniciar.setEnabled(false);

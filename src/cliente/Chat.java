@@ -14,6 +14,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.PortUnreachableException;
@@ -23,13 +26,18 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
@@ -42,6 +50,7 @@ import javax.swing.text.StyledDocument;
 import protocol.DGServerSocket;
 import protocol.DGSocket;
 import utility.buffer.BufferMethods;
+import javax.swing.BoxLayout;
 
 public class Chat extends JFrame {
 
@@ -50,10 +59,8 @@ public class Chat extends JFrame {
 	 */
 	private static final long serialVersionUID = -1864226400918464241L;
 	private JPanel contentPane;
-	private JTextField txtTypeYourMessage;
-	private JTextField txtTypeFilePath;
+	private JTextArea txtTypeYourMessage;
 	private String txtTypeMsg = "Digite uma mensagem";
-	private String txtTypeFile = "Caminho do arquivo";
 //	private OutputStream outToFriend;
 //	private InputStream inFromFriend;
 	private DGSocket friendSocket;
@@ -67,8 +74,22 @@ public class Chat extends JFrame {
 	private Thread msgrcv;
 	private JLabel lblMsgInfo;
 	private int[] pktsPerdidos; // ponteiro importante
+	private List<DGServerSocket> SSList;
 	
-	/**
+	private int friendUploadPort;
+	
+	private String meUserName;
+	
+	private ArrayList<String> amigos;
+	
+	private StyledDocument docMsg;
+	private Style styleFrom;
+	private String friendName;
+	
+	private JPanel downloadPanel;
+	private JButton openButton;
+    private JFileChooser fc;
+    /**
 	 * Create the frame.
 	 */
 	
@@ -76,7 +97,7 @@ public class Chat extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					new Chat("eu", "ele",null, null, null, null, null, true); //new Socket("localhost", 2030));
+					new Chat("eu", "ele", 0, null, null, null, null, null, true); //new Socket("localhost", 2030));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -84,13 +105,25 @@ public class Chat extends JFrame {
 		});
 	}
 	
-	public Chat(String usr, String friend, DGSocket friendSocketConstrutor, DGSocket msgStatusSocketConstrutor,
-			ArrayList<DGServerSocket> SSList, ArrayList<String> amigos, int[] pktsPerdidos, boolean initVisible) throws IOException {
+	public Chat(String usr, String friend, int friendUploadPort, DGSocket friendSocketConstrutor,
+			DGSocket msgStatusSocketConstrutor, ArrayList<DGServerSocket> SSList,
+			ArrayList<String> amigos, int[] pktsPerdidos, boolean initVisible) throws IOException {
 		setResizable(false);
+		
+		this.friendName = friend;
+		
+		this.amigos = amigos;
+		this.meUserName = usr;
+		
+		this.friendUploadPort = friendUploadPort;
 
+		this.SSList = SSList;
 		this.pktsPerdidos = pktsPerdidos;
 		this.servicoStatusMsgOk = true;
 		this.dateFormat = new SimpleDateFormat("HH:mm:ss");
+		
+		fc = new JFileChooser();
+		openButton = new JButton("Escolher arquivo");
 
 		this.sentMsg = false;
 		this.msgNova = false;
@@ -151,13 +184,6 @@ public class Chat extends JFrame {
 		gbl_contentPane.rowWeights = new double[]{1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		this.contentPane.setLayout(gbl_contentPane);
 		
-		//Pasta de arquivos
-		File folder=new File("./download_folder/");
-		folder.mkdir();
-		//em todas as threads trocar TCP pelo nosso protocolo
-		//Thread para envio de mensagens
-//		Thread send= new Thread(new SendText(DestinationIP, DestinationPort));
-		
 		JScrollPane scrollPane = new JScrollPane();
 		GridBagConstraints gbc_scrollPane = new GridBagConstraints();
 		gbc_scrollPane.fill = GridBagConstraints.BOTH;
@@ -169,8 +195,8 @@ public class Chat extends JFrame {
 		msgTextPane.setEditable(false);
 		scrollPane.setViewportView(msgTextPane);
 		
-		StyledDocument docMsg = msgTextPane.getStyledDocument();
-		Style styleFrom = msgTextPane.addStyle("FROM", null);
+		docMsg = msgTextPane.getStyledDocument();
+		styleFrom = msgTextPane.addStyle("FROM", null);
 		StyleConstants.setBold(styleFrom, true);
 		
 		JScrollPane scrollPane_1 = new JScrollPane();
@@ -181,10 +207,10 @@ public class Chat extends JFrame {
 		gbc_scrollPane_1.gridy = 0;
 		this.contentPane.add(scrollPane_1, gbc_scrollPane_1);
 		
-		JPanel panel = new JPanel();
-		scrollPane_1.setViewportView(panel);
+		downloadPanel = new JPanel();
+		downloadPanel.setLayout(new BoxLayout(downloadPanel, BoxLayout.Y_AXIS));
+		scrollPane_1.setViewportView(downloadPanel);
 		//Thread para receber mensagens
-		//lebrar de mudar para nosso protocolo
 		msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
 		msgrcv.start();
 		//Thread para enviar arquivos
@@ -192,7 +218,10 @@ public class Chat extends JFrame {
 		//Thread para receber arquivos
 		
 		
-		this.txtTypeYourMessage = new JTextField();
+		this.txtTypeYourMessage = new JTextArea();
+		this.txtTypeYourMessage.setLineWrap(true);
+		this.txtTypeYourMessage.setWrapStyleWord(true);
+		JScrollPane txtTypeScrollPane = new JScrollPane(this.txtTypeYourMessage);
 		
 		lblMsgInfo = new JLabel("");
 		lblMsgInfo.setFont(new Font("Dialog", Font.BOLD, 10));
@@ -206,11 +235,12 @@ public class Chat extends JFrame {
 		this.txtTypeYourMessage.setText(this.txtTypeMsg);
 		this.txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
 		GridBagConstraints gbc_txtTypeYourMessage = new GridBagConstraints();
-		gbc_txtTypeYourMessage.fill = GridBagConstraints.HORIZONTAL;
+		gbc_txtTypeYourMessage.gridheight = 2;
+		gbc_txtTypeYourMessage.fill = GridBagConstraints.BOTH;
 		gbc_txtTypeYourMessage.insets = new Insets(0, 0, 5, 5);
 		gbc_txtTypeYourMessage.gridx = 0;
 		gbc_txtTypeYourMessage.gridy = 2;
-		this.contentPane.add(this.txtTypeYourMessage, gbc_txtTypeYourMessage);
+		this.contentPane.add(txtTypeScrollPane, gbc_txtTypeYourMessage);
 		this.txtTypeYourMessage.setColumns(10);
 		
 		JButton btnEnviarMsg = new JButton("Enviar");
@@ -221,273 +251,327 @@ public class Chat extends JFrame {
 		gbc_btnEnviarMsg.gridy = 2;
 		this.contentPane.add(btnEnviarMsg, gbc_btnEnviarMsg);
 		
-		this.txtTypeFilePath = new JTextField();
-		this.txtTypeFilePath.setForeground(Color.LIGHT_GRAY);
-		this.txtTypeFilePath.setText(this.txtTypeFile);
-		GridBagConstraints gbc_txtTypeFilePath = new GridBagConstraints();
-		gbc_txtTypeFilePath.fill = GridBagConstraints.HORIZONTAL;
-		gbc_txtTypeFilePath.insets = new Insets(0, 0, 0, 5);
-		gbc_txtTypeFilePath.gridx = 0;
-		gbc_txtTypeFilePath.gridy = 3;
-		this.contentPane.add(this.txtTypeFilePath, gbc_txtTypeFilePath);
-		this.txtTypeFilePath.setColumns(10);
-		
-		JButton btnEnviarArquivo = new JButton("Enviar arquivo");
-		GridBagConstraints gbc_btnEnviarArquivo = new GridBagConstraints();
-		gbc_btnEnviarArquivo.fill = GridBagConstraints.BOTH;
-		gbc_btnEnviarArquivo.gridx = 1;
-		gbc_btnEnviarArquivo.gridy = 3;
-		this.contentPane.add(btnEnviarArquivo, gbc_btnEnviarArquivo);
+		GridBagConstraints gbc_openButton = new GridBagConstraints();
+		gbc_openButton.fill = GridBagConstraints.BOTH;
+		gbc_openButton.gridx = 1;
+		gbc_openButton.gridy = 3;
+		this.contentPane.add(openButton, gbc_openButton);
 		
 		msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
 		msgstatusthread.start();
 		
-		btnEnviarArquivo.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				// TODO abrir thread para envio de arquivos
-				
-			}
-		});
+		txtTypeYourMessage.setEnabled(true);
+		txtTypeYourMessage.setEditable(true);
+		
+//		DownloadPainel downloadInfo = new DownloadPainel("Nome do Arquivo", new JProgressBar());
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+//		
+//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadPanel.add(downloadInfo);
+		
+//		btnEnviarArquivo.addActionListener(new ActionListener() {
+//			public void actionPerformed(ActionEvent e) {
+//				TODO abrir thread para envio de arquivos
+//				try {
+//					DGSocket teste = new DGSocket(Chat.this.pktsPerdidos,
+//							friendSocket.getInetAddress().getHostName(), friendSocket.getPort() + 2);
+//					
+//				} catch (Exception ex) {
+//					ex.printStackTrace();
+//				}
+//				String directory = "Upload_Pool" + File.separator;
+//				String fileName = txtTypeFilePath.getText();
+//				File uploadFile = new File(directory + fileName);
+//				if (uploadFile.isFile()) {
+//					// diz nome do arquivo que estarei enviando
+//					BufferMethods.writeString(fileName, teste);
+//					System.out.println(directory + fileName);
+//					// diz quantos bytes estarei enviando
+//					System.out.println("fileSize: " + uploadFile.length());
+//
+//					BufferMethods.sendLong(uploadFile.length(), teste);
+//					
+//					long remainingSize = uploadFile.length();
+//					byte[] buffer = new byte[1024];
+//					int bytesRead;
+//					FileInputStream fInputStream = new FileInputStream(uploadFile);
+//					
+//					while (remainingSize > 0  && (bytesRead = fInputStream.read(buffer, 0,
+//							(int)Math.min(buffer.length, remainingSize))) != -1) {
+//						remainingSize -= bytesRead;
+//						System.out.println("bytesRead: " + bytesRead + "\nremainingSize: " + remainingSize);
+//						teste.send(buffer, bytesRead);
+//					}
+//					fInputStream.close();
+//				}
+//				
+//				teste.close();
+//				System.out.println("Enquanto fecha eu posso continuar fazendo coisas");
+//			}
+//		});
 		
 		this.txtTypeYourMessage.addKeyListener(new KeyAdapter() {
 
 			@Override
 			public void keyReleased(KeyEvent arg0) {
 				if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
-					if (!(txtTypeYourMessage.getText().isEmpty() || 
-							(txtTypeYourMessage.getText().equals(txtTypeMsg) &&
-							txtTypeYourMessage.getForeground().equals(Color.LIGHT_GRAY)))) {
-						try {
-							if (friendOffline) {
-								Iterator<String> it = amigos.iterator();
-								while (it.hasNext()) {
-									String str = it.next();
-									int fP = str.indexOf('('), lP = str.lastIndexOf(')');
-									if (fP != -1 && lP != -1) {
-										String friendname = str.substring(0, fP - 1);
-										if (friendname.equals(friend)) {
-											String friendIP = str.substring(fP + 1, str.indexOf(','));
-											try {
-												int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
-												friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
-												msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
-												friendOffline = false;
-												msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
-												servicoStatusMsgOk = true;
-												msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
-												msgstatusthread.start();
-												msgrcv.start();
-												BufferMethods.writeString(usr, friendSocket);
-											} catch (NumberFormatException e) {
-												System.out.println("erro tentando pegar porta");
-											}
-											break;
-										}
-									}
-								}
-							} else {
-								BufferMethods.writeChatString(txtTypeYourMessage.getText(), friendSocket);
-								synchronized (lblMsgInfo) {
-									lblMsgInfo.setForeground(Color.ORANGE);
-									lblMsgInfo.setText("mensagem enviada");
-									sentMsg = true;
-								}
-								synchronized (docMsg) {
-									docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
-											+ " <" + usr + "> ", styleFrom);
-									docMsg.insertString(docMsg.getLength(), txtTypeYourMessage.getText() + '\n', null);
-								}
-								txtTypeYourMessage.setText("");
-							}
-						} catch (SocketException e) {
-							lblMsgInfo.setForeground(Color.RED);
-							lblMsgInfo.setText(friend + " está offline.");
-							friendOffline = true;
-						} catch (BadLocationException e) {
-							// não deveria dar isto
-							e.printStackTrace();
-						} catch (Exception e) {
-							lblMsgInfo.setForeground(Color.RED);
-							lblMsgInfo.setText("mensagem não foi enviada");
-							e.printStackTrace();
-						}
-					}
+					txtTypeYourMessage.setEnabled(true);
+					txtTypeYourMessage.setEditable(true);
+					txtTypeYourMessage.setText(txtTypeYourMessage.getText().trim());
+					enviaMsg(usr, friend, amigos, docMsg, styleFrom);
 				}
-				if (servicoStatusMsgOk && msgNova) {
-					try {
-//						msgStatusOutput.write(2);
-						BufferMethods.sendFeedBack(2, msgStatusSocket);
-						msgNova = false;
-					} catch (Exception e1) {
-						e1.printStackTrace();
-						synchronized (lblMsgInfo) {
-							lblMsgInfo.setForeground(Color.RED);
-							lblMsgInfo.setText("serviço de status de mensagem quebrou");
-							servicoStatusMsgOk = false;
-						}
-					}
-				}
+				feedbackaMsgStatus();
 			}
 		});
 		
 		btnEnviarMsg.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
-				if (!(txtTypeYourMessage.getText().isEmpty() || 
-						(txtTypeYourMessage.getText().equals(txtTypeMsg) &&
-						txtTypeYourMessage.getForeground().equals(Color.LIGHT_GRAY)))) {
-					try {
-						if (friendOffline) {
-							Iterator<String> it = amigos.iterator();
-							while (it.hasNext()) {
-								String str = it.next();
-								int fP = str.indexOf('('), lP = str.lastIndexOf(')');
-								if (fP != -1 && lP != -1) {
-									String friendname = str.substring(0, fP - 1);
-									if (friendname.equals(friend)) {
-										String friendIP = str.substring(fP + 1, str.indexOf(','));
-										try {
-											int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
-											friendSocket = new DGSocket(pktsPerdidos, friendIP, friendPort);
-											msgStatusSocket = new DGSocket(pktsPerdidos, friendIP, friendPort +1);
-											friendOffline = false;
-											msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
-											servicoStatusMsgOk = true;
-											msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
-											msgstatusthread.start();
-											msgrcv.start();
-											BufferMethods.writeString(usr, friendSocket);
-										} catch (NumberFormatException e) {
-											System.out.println("erro tentando pegar porta");
-										}
-										break;
-									}
-								}
-							}
-						} else {
-							BufferMethods.writeChatString(txtTypeYourMessage.getText(), friendSocket);
-							synchronized (lblMsgInfo) {
-								lblMsgInfo.setForeground(Color.ORANGE);
-								lblMsgInfo.setText("mensagem enviada");
-								sentMsg = true;
-							}
-							synchronized (docMsg) {
-								docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
-										+ " <" + usr + "> ", styleFrom);
-								docMsg.insertString(docMsg.getLength(), txtTypeYourMessage.getText() + '\n', null);
-							}
-							txtTypeYourMessage.setText("");
-						}
-					} catch (SocketException e) {
-						lblMsgInfo.setForeground(Color.RED);
-						lblMsgInfo.setText(friend + " está offline.");
-						friendOffline = true;
-					} catch (BadLocationException e) {
-						// não deveria dar isto
-						e.printStackTrace();
-					} catch (Exception e) {
-						lblMsgInfo.setForeground(Color.RED);
-						lblMsgInfo.setText("mensagem não foi enviada");
-						e.printStackTrace();
-					}
-				}
-				if (servicoStatusMsgOk && msgNova) {
-					try {
-//						msgStatusOutput.write(2);
-						BufferMethods.sendFeedBack(2, msgStatusSocket);
-						msgNova = false;
-					} catch (Exception e1) {
-						e1.printStackTrace();
-						synchronized (lblMsgInfo) {
-							lblMsgInfo.setForeground(Color.RED);
-							lblMsgInfo.setText("serviço de status de mensagem quebrou");
-							servicoStatusMsgOk = false;
-						}
-					}
-				}
+				txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
+				enviaMsg(usr, friend, amigos, docMsg, styleFrom);
+				feedbackaMsgStatus();
 			}
 		});
 		
 		this.txtTypeYourMessage.addFocusListener(new FocusListener() {
 			public void focusLost(FocusEvent e) {
-				if (txtTypeYourMessage.getText().isEmpty()) {
+				txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
+				String txtMessage = txtTypeYourMessage.getText().trim();
+				if (txtMessage.isEmpty()) {
 					txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
 					txtTypeYourMessage.setText(txtTypeMsg);
 				}
 			}
 			public void focusGained(FocusEvent e) {
-				if (txtTypeYourMessage.getText().isEmpty() || 
-						(txtTypeYourMessage.getText().equals(txtTypeMsg) &&
+				txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
+				String txtMessage = txtTypeYourMessage.getText().trim();
+				if (txtMessage.isEmpty() || 
+						(txtMessage.equals(txtTypeMsg) &&
 						txtTypeYourMessage.getForeground().equals(Color.LIGHT_GRAY))) {
 					txtTypeYourMessage.setText("");
 					txtTypeYourMessage.setForeground(Color.BLACK);
 				}
-				if (servicoStatusMsgOk && msgNova) {
-					try {
-//						msgStatusOutput.write(2);
-						BufferMethods.sendFeedBack(2, msgStatusSocket);
-						msgNova = false;
-					} catch (IOException e1) {
-						e1.printStackTrace();
-						synchronized (lblMsgInfo) {
-							lblMsgInfo.setForeground(Color.RED);
-							lblMsgInfo.setText("serviço de status de mensagem quebrou");
-							servicoStatusMsgOk = false;
-						}
-					}
-				}
-			}
-		});
-		
-		this.txtTypeFilePath.addFocusListener(new FocusListener() {
-			public void focusLost(FocusEvent e) {
-				if (txtTypeFilePath.getText().isEmpty()) {
-					txtTypeFilePath.setForeground(Color.LIGHT_GRAY);
-					txtTypeFilePath.setText(txtTypeFile);
-				}
-			}
-			public void focusGained(FocusEvent e) {
-				if (txtTypeFilePath.getText().isEmpty() || 
-						(txtTypeFilePath.getText().equals(txtTypeFile) &&
-						txtTypeFilePath.getForeground().equals(Color.LIGHT_GRAY))) {
-					txtTypeFilePath.setText("");
-					txtTypeFilePath.setForeground(Color.BLACK);
-				}
-				if (servicoStatusMsgOk && msgNova) {
-					try {
-//						msgStatusOutput.write(2);
-						BufferMethods.sendFeedBack(2, msgStatusSocket);
-						msgNova = false;
-					} catch (IOException e1) {
-						e1.printStackTrace();
-						synchronized (lblMsgInfo) {
-							lblMsgInfo.setForeground(Color.RED);
-							lblMsgInfo.setText("serviço de status de mensagem quebrou");
-							servicoStatusMsgOk = false;
-						}
-					}
-				}
+				feedbackaMsgStatus();
 			}
 		});
 		
 		this.addWindowFocusListener(new WindowAdapter() {
 		    public void windowGainedFocus(WindowEvent e) {
+		    	txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
 		        txtTypeYourMessage.requestFocusInWindow();
-		        if (servicoStatusMsgOk && msgNova) {
-					try {
-//						msgStatusOutput.write(2);
-						BufferMethods.sendFeedBack(2, msgStatusSocket);
-						msgNova = false;
-					} catch (IOException e1) {
-						e1.printStackTrace();
-						synchronized (lblMsgInfo) {
-							lblMsgInfo.setForeground(Color.RED);
-							lblMsgInfo.setText("serviço de status de mensagem quebrou");
-							servicoStatusMsgOk = false;
-						}
-					}
-				}
+		        feedbackaMsgStatus();
 		    }
 		});
+		
+		openButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
+				openButton.setEnabled(false);
+	            int returnVal = fc.showOpenDialog(Chat.this);
+
+	            if (returnVal == JFileChooser.APPROVE_OPTION) {
+	                File file = fc.getSelectedFile();
+	                Thread tUploadaArquivo = new Thread(new uploadsArquivo(file));
+	                tUploadaArquivo.start();		                
+            	}
+	            openButton.setEnabled(true);
+            }
+		});
+		
+//		Thread tEsperaArquivo = new Thread(new EsperaArquivos());
+//		tEsperaArquivo.start();
+	}
+	
+	class uploadsArquivo implements Runnable {
+		
+		File file;
+		
+		public uploadsArquivo(File file) {
+			this.file = file;
+		}
+		
+		public void run() {
+			if (file.length() == 0) {
+				JOptionPane.showMessageDialog(Chat.this,
+						"Arquivo com 0 bytes hehe",
+						"Erro", JOptionPane.WARNING_MESSAGE);
+				return;
+			}
+			DGSocket dgsUploader;
+			FileInputStream fInputStream;
+			try {
+				fInputStream = new FileInputStream(file);
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(Chat.this,
+						"Arquivo não encontrado",
+						"Erro", JOptionPane.WARNING_MESSAGE);
+				return;
+			}
+        	try {
+        		dgsUploader = new DGSocket(Chat.this.pktsPerdidos,
+        				friendSocket.getInetAddress().getHostName(),
+        				friendUploadPort);
+        	} catch (Exception e) {
+        		if (fInputStream != null) {
+        			try {
+						fInputStream.close();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+        		}
+        		e.printStackTrace();
+				JOptionPane.showMessageDialog(Chat.this,
+						"Erro tentando se conectar a (" +
+						friendSocket.getInetAddress().getHostName() + ", " +
+						friendUploadPort + ")",
+						"Erro", JOptionPane.WARNING_MESSAGE);
+				return;
+        	}
+        	try {
+        		
+        		// diz o meu nome ;-;
+        		BufferMethods.writeString(meUserName, dgsUploader);
+                // diz nome do arquivo que estarei enviando
+        		BufferMethods.writeString(file.getName(), dgsUploader);
+        	} catch (Exception e) {
+        		try {
+					dgsUploader.close();
+				} catch (IOException e2) {
+					// TODO Auto-generated catch block
+					e2.printStackTrace();
+				}
+        		if (fInputStream != null) {
+        			try {
+						fInputStream.close();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+        		}
+        		e.printStackTrace();
+				JOptionPane.showMessageDialog(Chat.this,
+						"Erro durante transferência",
+						"Erro", JOptionPane.WARNING_MESSAGE);
+				return;
+        	}
+			System.out.println(file.getAbsolutePath());
+			System.out.println("fileSize: " + file.length());
+			long fileLength = file.length();
+			try {
+				// diz quantos bytes estarei enviando
+				BufferMethods.sendLong(fileLength, dgsUploader);
+			} catch (Exception e) {
+				try {
+					dgsUploader.close();
+				} catch (IOException e2) {
+					// TODO Auto-generated catch block
+					e2.printStackTrace();
+				}
+				if (fInputStream != null) {
+        			try {
+						fInputStream.close();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+        		}
+        		e.printStackTrace();
+				JOptionPane.showMessageDialog(Chat.this,
+						"Erro durante transferência",
+						"Erro", JOptionPane.WARNING_MESSAGE);
+				return;
+        	}
+			
+			long remainingSize = file.length();
+			byte[] buffer = new byte[4096];
+			int bytesRead;
+			JProgressBar progressBar = new JProgressBar();
+			DownloadPainel downloadInfo = new DownloadPainel(file, progressBar);
+			downloadInfo.setAbrir(true);
+			downloadPanel.add(downloadInfo);
+			downloadPanel.validate();
+			long t0 = System.currentTimeMillis();
+			long toDownload = remainingSize;
+			long tf, deltaT;
+			double estimativa = 5;
+			try {
+				while (remainingSize > 0  && (bytesRead = fInputStream.read(buffer, 0,
+						(int)Math.min(buffer.length, remainingSize))) != -1) {
+					remainingSize -= bytesRead;
+					System.out.println("bytesRead: " + bytesRead + "\nremainingSize: " + remainingSize);
+					dgsUploader.send(buffer, bytesRead);
+					
+					tf = System.currentTimeMillis();
+					deltaT = tf - t0;
+					estimativa = atualizaProgresso(fileLength, toDownload, remainingSize,
+							deltaT, estimativa, progressBar);
+				}
+			} catch (Exception e) {
+				downloadPanel.remove(downloadInfo);
+				downloadPanel.repaint();
+				downloadPanel.validate();
+				try {
+					dgsUploader.close();
+				} catch (IOException e2) {
+					// TODO Auto-generated catch block
+					e2.printStackTrace();
+				}
+				if (fInputStream != null) {
+        			try {
+						fInputStream.close();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+        		}
+        		e.printStackTrace();
+				JOptionPane.showMessageDialog(Chat.this,
+						"Erro durante transferência",
+						"Erro", JOptionPane.WARNING_MESSAGE);
+				return;
+			}
+			try {
+				fInputStream.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			try {
+				dgsUploader.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			txtTypeYourMessage.setEnabled(true);
+			txtTypeYourMessage.setEditable(true);
+		}
 	}
 	
 	class MsgStatusIn implements Runnable {
@@ -503,6 +587,8 @@ public class Chat extends JFrame {
 				try { //TODO implementar essas exceções
 //					int status = msgStatusInput.read();
 					int status = BufferMethods.receiveFeedBack(msgStatusSocket);
+					txtTypeYourMessage.setEnabled(true);
+					txtTypeYourMessage.setEditable(true);
 					if (status == 1) {
 						synchronized (lblMsgInfo) {
 							lblMsgInfo.setForeground(Color.YELLOW);
@@ -529,6 +615,107 @@ public class Chat extends JFrame {
 		}
 	}
 	
+	class BaixaArquivo implements Runnable {
+		
+		private DGSocket connectionSocket;
+		
+		public BaixaArquivo(DGSocket dgs) {
+			this.connectionSocket = dgs;
+		}
+		
+		public void run() {
+			DownloadPainel downloadInfo = null;
+			FileOutputStream outToFile = null;
+			try {
+				String directory = "Download_Dump" + File.separator;
+				String fileName = BufferMethods.readString(connectionSocket);
+				
+				JProgressBar progressBar = new JProgressBar();
+				fileName = fileName.replaceAll(" ", "");
+				System.out.println(directory + fileName);
+				File arquivoReceptor = new File(directory + fileName);
+				if (arquivoReceptor.isFile()) {
+					arquivoReceptor.delete();
+				}
+				arquivoReceptor.createNewFile();
+				downloadInfo = new DownloadPainel(arquivoReceptor, progressBar);
+				downloadInfo.setAbrir(false);
+				downloadPanel.add(downloadInfo);
+				downloadPanel.validate();
+				long fileSize = BufferMethods.receiveLong(connectionSocket);
+				System.out.println("fileSize: " + fileSize);
+				long remainingSize = fileSize;
+				byte[] buffer = new byte[4096];
+				int bytesRead = 0;
+				outToFile = new FileOutputStream(arquivoReceptor);
+				
+				long t0 = System.currentTimeMillis();
+				long toDownload = remainingSize;
+				long tf, deltaT;
+				double estimativa = 5;
+				while (true) {
+					bytesRead = connectionSocket.receive(buffer, (int)Math.min(buffer.length, remainingSize));
+					if (bytesRead == -1) break;
+					remainingSize -= bytesRead;
+					
+					tf = System.currentTimeMillis();
+					deltaT = tf - t0;
+					estimativa = atualizaProgresso(fileSize, toDownload, remainingSize,
+							deltaT, estimativa, progressBar);
+					
+					System.out.println("bytesRead: " + bytesRead+ "\nremainingSize: " + remainingSize);
+					outToFile.write(buffer, 0, bytesRead);
+					if (remainingSize == 0) break;
+				}
+				downloadInfo.setAbrir(true);
+				try {
+					outToFile.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				try {
+					connectionSocket.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				if (downloadInfo != null) {
+					downloadPanel.remove(downloadInfo);
+					downloadPanel.repaint();
+					downloadPanel.validate();
+				}
+			} finally {
+				try {
+					outToFile.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				try {
+					connectionSocket.close();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
+//	class EsperaArquivos implements Runnable {
+//		public void run() {
+//			while (true) {
+//				DGSocket connectionSocket = null;
+//				try {
+//					connectionSocket = SSList.get(2).accept(pktsPerdidos);
+//					String friendUploader = BufferMethods.readString(connectionSocket);
+//					Chat.this.setVisible(true);
+//					(new Thread(new BaixaArquivo(connectionSocket))).start();
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//				}
+//			}
+//		}
+//	}
+	
 	class ReceiveMessages implements Runnable {
 //		private InputStream inFromFriend;
 		private StyledDocument docMsg;
@@ -546,8 +733,10 @@ public class Chat extends JFrame {
 		}
 		public void run() {
 			while (!finished) {
-				try {				
+				try {	
 					String msg = BufferMethods.readChatString(friendSocket);
+					txtTypeYourMessage.setEnabled(true);
+					txtTypeYourMessage.setEditable(true);
 					if (!chatframe.isVisible()) {
 						chatframe.setVisible(true);
 					}
@@ -569,4 +758,203 @@ public class Chat extends JFrame {
 			this.finished = true;
 		}
 	}
+	
+	public void comecaBaixaArquivos(DGSocket connectionSocket) {
+		(new Thread(new BaixaArquivo(connectionSocket))).start();
+	}
+	
+	private double atualizaProgresso(long fileLength, long toDownload, long remainingSize,
+			long deltaT, double estimativa, JProgressBar progressBar) {
+		// aging
+		double alfa = 0.00390625, amostraAtual;
+		//		if (((int) (deltaT / 1000)) % 2 == 0) {
+		amostraAtual = ((deltaT * toDownload / (double) (toDownload - remainingSize)) - deltaT) / 1000;
+		estimativa = (1 - alfa) * estimativa + alfa * amostraAtual;
+		//		}
+		StringBuilder quickConc;
+		progressBar.setValue((int)(( (fileLength - remainingSize) / (double)fileLength) * 100));
+		quickConc = new StringBuilder();
+		quickConc.append(String.format("%.0f",estimativa)).append(" s");
+		progressBar.setString(quickConc.toString());
+		return estimativa;
+	}
+
+	private void enviaMsg(String usr, String friend, ArrayList<String> amigos, StyledDocument docMsg, Style styleFrom) {
+		String txtMessage = txtTypeYourMessage.getText().trim();
+		if (!(txtMessage.isEmpty() || 
+				(txtMessage.equals(txtTypeMsg) &&
+				txtTypeYourMessage.getForeground().equals(Color.LIGHT_GRAY)))) {
+			if (txtMessage.length() > 256) {
+				JOptionPane.showMessageDialog(Chat.this,
+						"Sua mensagem é grande demais hehe (maior que 256 caracteres)",
+						"Mensagem grande demais",
+			            JOptionPane.WARNING_MESSAGE);
+				return;
+			}
+			try {
+				if (friendOffline) {
+//					JOptionPane.showMessageDialog(Chat.this,
+//							"Friend offline, vamos tentar contatá-lo de novo",
+//							"Opa!", JOptionPane.WARNING_MESSAGE);
+					Iterator<String> it = Chat.this.amigos.iterator();
+					while (it.hasNext()) {
+						String str = it.next();
+						int fP = str.indexOf('('), lP = str.lastIndexOf(')');
+						if (fP != -1 && lP != -1) {
+							String friendname = str.substring(0, fP - 1);
+							if (friendname.equals(friend)) {
+								String friendIP = str.substring(fP + 1, str.indexOf(','));
+								try {
+									int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
+//									JOptionPane.showMessageDialog(Chat.this,
+//											"Encontramos " + friendname + " em " + friendIP + ", "
+//											+ friendPort,
+//											"Aha!", JOptionPane.WARNING_MESSAGE);
+
+									friendUploadPort = friendPort + 2;
+									friendSocket = new DGSocket(Chat.this.pktsPerdidos, friendIP, friendPort);
+									BufferMethods.writeString(usr, friendSocket);
+									BufferMethods.sendInt(SSList.get(2).getLocalPort(), friendSocket);
+									msgStatusSocket = new DGSocket(Chat.this.pktsPerdidos, friendIP, friendPort +1);
+									msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
+									msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
+									msgstatusthread.start();
+									msgrcv.start();
+									servicoStatusMsgOk = true;
+									friendOffline = false;
+									Thread.sleep(500);
+									lblMsgInfo.setText("");
+//									BufferMethods.writeChatString(txtMessage, friendSocket);
+//									synchronized (lblMsgInfo) {
+//										lblMsgInfo.setForeground(Color.ORANGE);
+//										lblMsgInfo.setText("mensagem enviada");
+//										sentMsg = true;
+//									}
+//									synchronized (docMsg) {
+//										docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
+//												+ " <" + usr + "> ", styleFrom);
+//										docMsg.insertString(docMsg.getLength(), txtMessage + '\n', null);
+//									}
+//									txtTypeYourMessage.setText("");
+								} catch (NumberFormatException e) {
+									System.out.println("erro tentando pegar porta");
+								}
+								break;
+							}
+						}
+					}
+				} else {
+					BufferMethods.writeChatString(txtMessage, friendSocket);
+					synchronized (lblMsgInfo) {
+						lblMsgInfo.setForeground(Color.ORANGE);
+						lblMsgInfo.setText("mensagem enviada");
+						sentMsg = true;
+					}
+					synchronized (docMsg) {
+						docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
+								+ " <" + usr + "> ", styleFrom);
+						docMsg.insertString(docMsg.getLength(), txtMessage + '\n', null);
+					}
+					txtTypeYourMessage.setText("");
+				}
+			} catch (SocketException e) {
+				try {
+					friendSocket.close();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				try {
+					msgStatusSocket.close();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				lblMsgInfo.setForeground(Color.RED);
+				lblMsgInfo.setText(friend + " está offline.");
+				friendOffline = true;
+			} catch (BadLocationException e) {
+				// não deveria dar isto
+				e.printStackTrace();
+			} catch (Exception e) {
+				try {
+					friendSocket.close();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				try {
+					msgStatusSocket.close();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				lblMsgInfo.setForeground(Color.RED);
+				lblMsgInfo.setText("mensagem não foi enviada");
+				friendOffline = true;
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private void feedbackaMsgStatus() {
+		if (servicoStatusMsgOk && msgNova) {
+			try {
+				BufferMethods.sendFeedBack(2, msgStatusSocket);
+				msgNova = false;
+			} catch (Exception e1) {
+				e1.printStackTrace();
+				synchronized (lblMsgInfo) {
+					lblMsgInfo.setForeground(Color.RED);
+					lblMsgInfo.setText("serviço de status de mensagem quebrou");
+					servicoStatusMsgOk = false;
+					friendOffline = true;
+				}
+			}
+		}
+	}
+	
+	public void setAmigos(ArrayList<String> amigos) {
+		this.amigos = amigos;
+	}
+	
+	public void setStuff(int uploadPort, DGSocket friendSocket, DGSocket msgStatusSocket) {
+		try {
+			this.friendSocket.close();
+		} catch (Exception e) {}
+		try {
+			this.msgStatusSocket.close();
+		} catch (Exception e) {}
+		lblMsgInfo.setText("");
+		friendOffline = false;
+		msgrcv.interrupt();
+		msgstatusthread.interrupt();
+		this.friendSocket = friendSocket;
+		this.msgStatusSocket = msgStatusSocket;
+		this.friendUploadPort = uploadPort;
+		msgrcv = new Thread(new ReceiveMessages(friendName, docMsg, styleFrom));
+		msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
+		msgrcv.start();
+		msgstatusthread.start();
+	}
+	
+//	public void setfriendUploadPort(int uploadPort) {
+//		this.friendUploadPort = uploadPort;
+//	}
+//	
+//	public void setfriendSocket(DGSocket friendSocket) {
+//		try {
+//			this.friendSocket.close();
+//		} catch (Exception e) {}
+//		msgrcv.interrupt();
+//		this.friendSocket = friendSocket;
+//	}
+//	
+//	public void setMsgStatusSocket(DGSocket msgStatusSocket) {
+//		try {
+//			this.msgStatusSocket.close();
+//		} catch (Exception e) {}
+//		msgstatusthread.interrupt();
+//		this.msgStatusSocket = msgStatusSocket;
+//	}
 }
