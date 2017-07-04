@@ -516,9 +516,9 @@ public class DGSocket {
 					try {
 //						for (int i = sendBase; i < sendBase + sendWindowSize && i < nextSeqNum &&
 //								(lastPacketSent - (sendBase - 1)) <= Math.min(sendWindowSize, congwin); i++) {//i < nextSeqNum; i++) {
-						System.out.println(lastPacketSent - (sendBase - 1) + ", " + Math.min(sendWindowSize, congwin));
-						while ((lastPacketSent - (sendBase - 1)) <= Math.min(sendWindowSize, congwin)) {
-							System.out.println(lastPacketSent - (sendBase - 1) + ", " + Math.min(sendWindowSize, congwin));
+						System.out.println((lastPacketSent + 1) - (sendBase - 1) + ", " + Math.min(sendWindowSize, congwin));
+						while (((lastPacketSent + 1) - (sendBase - 1)) <= Math.min(sendWindowSize, congwin)) {
+							System.out.println((lastPacketSent + 1) - (sendBase - 1) + ", " + Math.min(sendWindowSize, congwin));
 //							assert i < sendBase + sendWindowSize : sendBase + " + " + sendWindowSize + " >= " + i;
 							if (testeSendBufferEstado[circulariza(lastPacketSent + 1)] == 1) {
 //								assert i < sendBase + sendWindowSize : sendBase + " + " + sendWindowSize + " >= " + i + "    2";
