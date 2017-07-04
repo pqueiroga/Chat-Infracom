@@ -11,16 +11,22 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.ConnectException;
 import java.net.PortUnreachableException;
 import java.net.SocketException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -89,6 +95,10 @@ public class Chat extends JFrame {
 	private JPanel downloadPanel;
 	private JButton openButton;
     private JFileChooser fc;
+    private JLabel lblEasteregg;
+    private JScrollPane txtTypeScrollPane;
+    private JScrollPane scrollPane;
+    private JTextPane msgTextPane;
     /**
 	 * Create the frame.
 	 */
@@ -124,11 +134,11 @@ public class Chat extends JFrame {
 		
 		fc = new JFileChooser();
 		openButton = new JButton("Escolher arquivo");
+		openButton.setToolTipText("Escolher arquivo para enviar pro amigo");
 
 		this.sentMsg = false;
 		this.msgNova = false;
 		this.chatframe = this;
-		this.chatframe.setVisible(initVisible);
 		setTitle(usr + " conversa com " + friend);
 //		this.outToFriend = connectionSocket.getOutputStream();
 //		this.inFromFriend = connectionSocket.getInputStream();
@@ -184,14 +194,27 @@ public class Chat extends JFrame {
 		gbl_contentPane.rowWeights = new double[]{1.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		this.contentPane.setLayout(gbl_contentPane);
 		
-		JScrollPane scrollPane = new JScrollPane();
+		scrollPane = new JScrollPane();
 		GridBagConstraints gbc_scrollPane = new GridBagConstraints();
 		gbc_scrollPane.fill = GridBagConstraints.BOTH;
 		gbc_scrollPane.insets = new Insets(0, 0, 5, 5);
 		gbc_scrollPane.gridx = 0;
 		gbc_scrollPane.gridy = 0;
 		this.contentPane.add(scrollPane, gbc_scrollPane);
-		JTextPane msgTextPane = new JTextPane();
+		msgTextPane = new JTextPane();
+		msgTextPane.setToolTipText("Área de texto para conversas");
+		try {
+			File file = new File("historicos_" + usr + File.separator + friend);
+			byte[] encoded = Files.readAllBytes(Paths.get(file.getAbsolutePath()));
+			msgTextPane.setForeground(Color.GRAY);
+			msgTextPane.setText(new String(encoded, "UTF-8"));
+			msgTextPane.setForeground(Color.BLACK);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+			
+		
+//		msgTextPane.setText(arg0);
 		msgTextPane.setEditable(false);
 		scrollPane.setViewportView(msgTextPane);
 		
@@ -208,10 +231,11 @@ public class Chat extends JFrame {
 		this.contentPane.add(scrollPane_1, gbc_scrollPane_1);
 		
 		downloadPanel = new JPanel();
+		downloadPanel.setToolTipText("Área de downloads e uploads");
 		downloadPanel.setLayout(new BoxLayout(downloadPanel, BoxLayout.Y_AXIS));
 		scrollPane_1.setViewportView(downloadPanel);
 		//Thread para receber mensagens
-		msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
+		msgrcv = new Thread(new ReceiveMessages());
 		msgrcv.start();
 		//Thread para enviar arquivos
 		
@@ -219,11 +243,13 @@ public class Chat extends JFrame {
 		
 		
 		this.txtTypeYourMessage = new JTextArea();
+		txtTypeYourMessage.setToolTipText("Digite uma mensagem aqui...");
 		this.txtTypeYourMessage.setLineWrap(true);
 		this.txtTypeYourMessage.setWrapStyleWord(true);
-		JScrollPane txtTypeScrollPane = new JScrollPane(this.txtTypeYourMessage);
+		txtTypeScrollPane = new JScrollPane(this.txtTypeYourMessage);
 		
 		lblMsgInfo = new JLabel("");
+		lblMsgInfo.setToolTipText("Estado da comunicação entre vocês");
 		lblMsgInfo.setFont(new Font("Dialog", Font.BOLD, 10));
 		lblMsgInfo.setVerticalAlignment(SwingConstants.TOP);
 		GridBagConstraints gbc_lblMsgInfo = new GridBagConstraints();
@@ -232,18 +258,26 @@ public class Chat extends JFrame {
 		gbc_lblMsgInfo.gridx = 0;
 		gbc_lblMsgInfo.gridy = 1;
 		this.contentPane.add(lblMsgInfo, gbc_lblMsgInfo);
+		
+		lblEasteregg = new JLabel("easter egg");
+		GridBagConstraints gbc_lblEasteregg = new GridBagConstraints();
+		gbc_lblEasteregg.insets = new Insets(0, 0, 5, 0);
+		gbc_lblEasteregg.gridx = 1;
+		gbc_lblEasteregg.gridy = 1;
+		contentPane.add(lblEasteregg, gbc_lblEasteregg);
 		this.txtTypeYourMessage.setText(this.txtTypeMsg);
 		this.txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
 		GridBagConstraints gbc_txtTypeYourMessage = new GridBagConstraints();
 		gbc_txtTypeYourMessage.gridheight = 2;
 		gbc_txtTypeYourMessage.fill = GridBagConstraints.BOTH;
-		gbc_txtTypeYourMessage.insets = new Insets(0, 0, 5, 5);
+		gbc_txtTypeYourMessage.insets = new Insets(0, 0, 0, 5);
 		gbc_txtTypeYourMessage.gridx = 0;
 		gbc_txtTypeYourMessage.gridy = 2;
 		this.contentPane.add(txtTypeScrollPane, gbc_txtTypeYourMessage);
-		this.txtTypeYourMessage.setColumns(10);
+//		this.txtTypeYourMessage.setColumns(10);
 		
 		JButton btnEnviarMsg = new JButton("Enviar");
+		btnEnviarMsg.setToolTipText("Enviar MENSAGEM! não cabia tudo hehe");
 		GridBagConstraints gbc_btnEnviarMsg = new GridBagConstraints();
 		gbc_btnEnviarMsg.fill = GridBagConstraints.BOTH;
 		gbc_btnEnviarMsg.insets = new Insets(0, 0, 5, 0);
@@ -257,7 +291,7 @@ public class Chat extends JFrame {
 		gbc_openButton.gridy = 3;
 		this.contentPane.add(openButton, gbc_openButton);
 		
-		msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
+		msgstatusthread = new Thread(new MsgStatusIn());
 		msgstatusthread.start();
 		
 		txtTypeYourMessage.setEnabled(true);
@@ -393,18 +427,147 @@ public class Chat extends JFrame {
 				txtTypeYourMessage.setEditable(true);
 				openButton.setEnabled(false);
 	            int returnVal = fc.showOpenDialog(Chat.this);
-
+	            txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
 	            if (returnVal == JFileChooser.APPROVE_OPTION) {
+	            	txtTypeYourMessage.setEnabled(true);
+	    			txtTypeYourMessage.setEditable(true);
 	                File file = fc.getSelectedFile();
 	                Thread tUploadaArquivo = new Thread(new uploadsArquivo(file));
-	                tUploadaArquivo.start();		                
+	                tUploadaArquivo.start();	
+	                txtTypeYourMessage.setEnabled(true);
+	    			txtTypeYourMessage.setEditable(true);
             	}
 	            openButton.setEnabled(true);
             }
 		});
 		
+		lblEasteregg.addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent e) {
+				File file = new File("historicos_" + usr + File.separator + friend);
+				try {
+					file.createNewFile();
+					try (PrintWriter pw = new PrintWriter(file)) {
+						pw.print(Chat.this.getDocMsg());
+					} catch (BadLocationException ex) {
+						// TODO Auto-generated catch block
+						ex.printStackTrace();
+					}
+				} catch (IOException ex) {
+					// TODO Auto-generated catch block
+					ex.printStackTrace();
+				}
+				
+				scrollPane.remove(msgTextPane);
+				contentPane.remove(scrollPane);
+				txtTypeScrollPane.remove(txtTypeYourMessage);
+				contentPane.remove(txtTypeScrollPane);
+				contentPane.remove(lblMsgInfo);
+				
+				scrollPane = new JScrollPane();
+				GridBagConstraints gbc_scrollPane = new GridBagConstraints();
+				gbc_scrollPane.fill = GridBagConstraints.BOTH;
+				gbc_scrollPane.insets = new Insets(0, 0, 5, 5);
+				gbc_scrollPane.gridx = 0;
+				gbc_scrollPane.gridy = 0;
+				contentPane.add(scrollPane, gbc_scrollPane);
+				msgTextPane = new JTextPane();
+				msgTextPane.setToolTipText("Área de texto para conversas");
+				try {
+					File file2 = new File("historicos_" + usr + File.separator + friend);
+					byte[] encoded = Files.readAllBytes(Paths.get(file2.getAbsolutePath()));
+					msgTextPane.setForeground(Color.GRAY);
+					msgTextPane.setText(new String(encoded, "UTF-8"));
+					msgTextPane.setForeground(Color.BLACK);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+				
+				msgTextPane.setEditable(false);
+				scrollPane.setViewportView(msgTextPane);
+				
+				docMsg = msgTextPane.getStyledDocument();
+				styleFrom = msgTextPane.addStyle("FROM", null);
+				StyleConstants.setBold(styleFrom, true);
+				
+				txtTypeYourMessage = new JTextArea();
+				txtTypeYourMessage.setToolTipText("Digite uma mensagem aqui...");
+				txtTypeYourMessage.setLineWrap(true);
+				txtTypeYourMessage.setWrapStyleWord(true);
+				txtTypeScrollPane = new JScrollPane(txtTypeYourMessage);
+				
+				lblMsgInfo = new JLabel("");
+				lblMsgInfo.setToolTipText("Estado da comunicação entre vocês");
+				lblMsgInfo.setFont(new Font("Dialog", Font.BOLD, 10));
+				lblMsgInfo.setVerticalAlignment(SwingConstants.TOP);
+				GridBagConstraints gbc_lblMsgInfo = new GridBagConstraints();
+				gbc_lblMsgInfo.anchor = GridBagConstraints.NORTHWEST;
+				gbc_lblMsgInfo.insets = new Insets(0, 0, 5, 5);
+				gbc_lblMsgInfo.gridx = 0;
+				gbc_lblMsgInfo.gridy = 1;
+				contentPane.add(lblMsgInfo, gbc_lblMsgInfo);
+				
+				txtTypeYourMessage.setText(txtTypeMsg);
+				txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
+				GridBagConstraints gbc_txtTypeYourMessage = new GridBagConstraints();
+				gbc_txtTypeYourMessage.gridheight = 2;
+				gbc_txtTypeYourMessage.fill = GridBagConstraints.BOTH;
+				gbc_txtTypeYourMessage.insets = new Insets(0, 0, 0, 5);
+				gbc_txtTypeYourMessage.gridx = 0;
+				gbc_txtTypeYourMessage.gridy = 2;
+				contentPane.add(txtTypeScrollPane, gbc_txtTypeYourMessage);
+				
+				txtTypeYourMessage.addKeyListener(new KeyAdapter() {
+
+					@Override
+					public void keyReleased(KeyEvent arg0) {
+						if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
+							txtTypeYourMessage.setEnabled(true);
+							txtTypeYourMessage.setEditable(true);
+							txtTypeYourMessage.setText(txtTypeYourMessage.getText().trim());
+							enviaMsg(usr, friend, amigos, docMsg, styleFrom);
+						}
+						feedbackaMsgStatus();
+					}
+				});
+				
+				txtTypeYourMessage.addFocusListener(new FocusListener() {
+					public void focusLost(FocusEvent e) {
+						txtTypeYourMessage.setEnabled(true);
+						txtTypeYourMessage.setEditable(true);
+						String txtMessage = txtTypeYourMessage.getText().trim();
+						if (txtMessage.isEmpty()) {
+							txtTypeYourMessage.setForeground(Color.LIGHT_GRAY);
+							txtTypeYourMessage.setText(txtTypeMsg);
+						}
+					}
+					public void focusGained(FocusEvent e) {
+						txtTypeYourMessage.setEnabled(true);
+						txtTypeYourMessage.setEditable(true);
+						String txtMessage = txtTypeYourMessage.getText().trim();
+						if (txtMessage.isEmpty() || 
+								(txtMessage.equals(txtTypeMsg) &&
+								txtTypeYourMessage.getForeground().equals(Color.LIGHT_GRAY))) {
+							txtTypeYourMessage.setText("");
+							txtTypeYourMessage.setForeground(Color.BLACK);
+						}
+						feedbackaMsgStatus();
+					}
+				});
+				scrollPane.repaint();
+				scrollPane.validate();
+				
+				contentPane.repaint();
+				contentPane.validate();
+				
+			}
+		});
+		
 //		Thread tEsperaArquivo = new Thread(new EsperaArquivos());
 //		tEsperaArquivo.start();
+		
+		this.chatframe.setVisible(initVisible);
+
 	}
 	
 	class uploadsArquivo implements Runnable {
@@ -416,6 +579,8 @@ public class Chat extends JFrame {
 		}
 		
 		public void run() {
+			txtTypeYourMessage.setEnabled(true);
+			txtTypeYourMessage.setEditable(true);
 			if (file.length() == 0) {
 				JOptionPane.showMessageDialog(Chat.this,
 						"Arquivo com 0 bytes hehe",
@@ -513,6 +678,8 @@ public class Chat extends JFrame {
 			byte[] buffer = new byte[4096];
 			int bytesRead;
 			JProgressBar progressBar = new JProgressBar();
+			progressBar.setString("");
+			progressBar.setStringPainted(true);
 			DownloadPainel downloadInfo = new DownloadPainel(file, progressBar);
 			downloadInfo.setAbrir(true);
 			downloadPanel.add(downloadInfo);
@@ -533,6 +700,9 @@ public class Chat extends JFrame {
 					estimativa = atualizaProgresso(fileLength, toDownload, remainingSize,
 							deltaT, estimativa, progressBar);
 				}
+				progressBar.setStringPainted(false);
+				txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
 			} catch (Exception e) {
 				downloadPanel.remove(downloadInfo);
 				downloadPanel.repaint();
@@ -576,12 +746,6 @@ public class Chat extends JFrame {
 	
 	class MsgStatusIn implements Runnable {
 		
-		private JLabel lblMsgInfo;
-
-		public MsgStatusIn(JLabel lblMsgInfo) {
-			this.lblMsgInfo = lblMsgInfo;
-		}
-		
 		public void run() {
 			while (true) {
 				try { //TODO implementar essas exceções
@@ -624,6 +788,8 @@ public class Chat extends JFrame {
 		}
 		
 		public void run() {
+			txtTypeYourMessage.setEnabled(true);
+			txtTypeYourMessage.setEditable(true);
 			DownloadPainel downloadInfo = null;
 			FileOutputStream outToFile = null;
 			try {
@@ -631,6 +797,8 @@ public class Chat extends JFrame {
 				String fileName = BufferMethods.readString(connectionSocket);
 				
 				JProgressBar progressBar = new JProgressBar();
+				progressBar.setString("");
+				progressBar.setStringPainted(true);
 				fileName = fileName.replaceAll(" ", "");
 				System.out.println(directory + fileName);
 				File arquivoReceptor = new File(directory + fileName);
@@ -642,32 +810,42 @@ public class Chat extends JFrame {
 				downloadInfo.setAbrir(false);
 				downloadPanel.add(downloadInfo);
 				downloadPanel.validate();
-				long fileSize = BufferMethods.receiveLong(connectionSocket);
-				System.out.println("fileSize: " + fileSize);
-				long remainingSize = fileSize;
-				byte[] buffer = new byte[4096];
-				int bytesRead = 0;
-				outToFile = new FileOutputStream(arquivoReceptor);
-				
-				long t0 = System.currentTimeMillis();
-				long toDownload = remainingSize;
-				long tf, deltaT;
-				double estimativa = 5;
-				while (true) {
-					bytesRead = connectionSocket.receive(buffer, (int)Math.min(buffer.length, remainingSize));
-					if (bytesRead == -1) break;
-					remainingSize -= bytesRead;
+				long remainingSize = 0;
+				try {
+					long fileSize = BufferMethods.receiveLong(connectionSocket);
+					System.out.println("fileSize: " + fileSize);
+					remainingSize = fileSize;
+					byte[] buffer = new byte[4096];
+					int bytesRead = 0;
+					outToFile = new FileOutputStream(arquivoReceptor);
 					
-					tf = System.currentTimeMillis();
-					deltaT = tf - t0;
-					estimativa = atualizaProgresso(fileSize, toDownload, remainingSize,
-							deltaT, estimativa, progressBar);
-					
-					System.out.println("bytesRead: " + bytesRead+ "\nremainingSize: " + remainingSize);
-					outToFile.write(buffer, 0, bytesRead);
-					if (remainingSize == 0) break;
+					long t0 = System.currentTimeMillis();
+					long toDownload = remainingSize;
+					long tf, deltaT;
+					double estimativa = 5;
+					while (true) {
+						bytesRead = connectionSocket.receive(buffer, (int)Math.min(buffer.length, remainingSize));
+						if (bytesRead == -1) break;
+						remainingSize -= bytesRead;
+						
+						tf = System.currentTimeMillis();
+						deltaT = tf - t0;
+						estimativa = atualizaProgresso(fileSize, toDownload, remainingSize,
+								deltaT, estimativa, progressBar);
+						
+						System.out.println("bytesRead: " + bytesRead+ "\nremainingSize: " + remainingSize);
+						outToFile.write(buffer, 0, bytesRead);
+						if (remainingSize == 0) break;
+					}
+				} catch (Exception e) {
+					if (downloadInfo != null && remainingSize != 0) {
+						downloadPanel.remove(downloadInfo);
+						downloadPanel.repaint();
+						downloadPanel.validate();
+					}
 				}
 				downloadInfo.setAbrir(true);
+				progressBar.setStringPainted(false);
 				try {
 					outToFile.close();
 				} catch (Exception e) {
@@ -680,12 +858,9 @@ public class Chat extends JFrame {
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				if (downloadInfo != null) {
-					downloadPanel.remove(downloadInfo);
-					downloadPanel.repaint();
-					downloadPanel.validate();
-				}
 			} finally {
+				txtTypeYourMessage.setEnabled(true);
+				txtTypeYourMessage.setEditable(true);
 				try {
 					outToFile.close();
 				} catch (Exception e) {
@@ -717,20 +892,8 @@ public class Chat extends JFrame {
 //	}
 	
 	class ReceiveMessages implements Runnable {
-//		private InputStream inFromFriend;
-		private StyledDocument docMsg;
-		private String friend;
-		private Style styleFrom;
-//		private OutputStream msgStatusOutput;
 		private boolean finished = false;
-		
-		public ReceiveMessages(String friend, StyledDocument docMsg, Style styleFrom) {
-//			this.inFromFriend = inFromFriend;
-			this.docMsg = docMsg;
-			this.friend = friend;
-			this.styleFrom = styleFrom;
-//			this.msgStatusOutput = msgStatusOutput;
-		}
+
 		public void run() {
 			while (!finished) {
 				try {	
@@ -742,7 +905,7 @@ public class Chat extends JFrame {
 					}
 					synchronized (docMsg) {
 						docMsg.insertString(docMsg.getLength(), dateFormat.format(new Date(System.currentTimeMillis()))
-								+ " <" + friend + "> ", styleFrom);
+								+ " <" + friendName + "> ", styleFrom);
 						docMsg.insertString(docMsg.getLength(), msg + '\n', null);
 						msgNova = true;
 					}
@@ -816,8 +979,8 @@ public class Chat extends JFrame {
 									BufferMethods.writeString(usr, friendSocket);
 									BufferMethods.sendInt(SSList.get(2).getLocalPort(), friendSocket);
 									msgStatusSocket = new DGSocket(Chat.this.pktsPerdidos, friendIP, friendPort +1);
-									msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
-									msgrcv = new Thread(new ReceiveMessages(friend, docMsg, styleFrom));
+									msgstatusthread = new Thread(new MsgStatusIn());
+									msgrcv = new Thread(new ReceiveMessages());
 									msgstatusthread.start();
 									msgrcv.start();
 									servicoStatusMsgOk = true;
@@ -932,10 +1095,18 @@ public class Chat extends JFrame {
 		this.friendSocket = friendSocket;
 		this.msgStatusSocket = msgStatusSocket;
 		this.friendUploadPort = uploadPort;
-		msgrcv = new Thread(new ReceiveMessages(friendName, docMsg, styleFrom));
-		msgstatusthread = new Thread(new MsgStatusIn(lblMsgInfo));
+		msgrcv = new Thread(new ReceiveMessages());
+		msgstatusthread = new Thread(new MsgStatusIn());
 		msgrcv.start();
 		msgstatusthread.start();
+	}
+	
+	public String getDocMsg() throws BadLocationException {
+		return docMsg.getText(0, docMsg.getLength());
+	}
+	
+	private void resetThisShit() {
+		
 	}
 	
 //	public void setfriendUploadPort(int uploadPort) {

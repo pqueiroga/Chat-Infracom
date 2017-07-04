@@ -11,10 +11,13 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -27,6 +30,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.BadLocationException;
 
 import cliente.Chat.BaixaArquivo;
 import protocol.DGServerSocket;
@@ -209,8 +213,10 @@ public class Profile extends JFrame {
 			cor = null;	
 		}
 		
-		File folder = new File("./Download_Pool/");
+		File folder = new File("Download_Dump" + File.separator);
 		folder.mkdir();
+		File folder2 = new File("historicos_" + username + File.separator);
+		folder2.mkdir();
 		
 		panel = new JPanel();
 		panel.setBackground(cor);
@@ -541,6 +547,25 @@ public class Profile extends JFrame {
 				espconv.interrupt();
 				tAtualizaPktsPerdidos.interrupt();
 				tEsperaArquivo.interrupt();
+				
+				for (Entry<String, Chat> xat : chats.entrySet()) {
+					File file = new File("historicos_" + username + File.separator + xat.getKey());
+					try {
+						file.createNewFile();
+						try (PrintWriter pw = new PrintWriter(file)) {
+							pw.print(xat.getValue().getDocMsg());
+						} catch (BadLocationException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+					
+				}
+				
 				System.exit(0);
 			}
 		});
@@ -550,6 +575,8 @@ public class Profile extends JFrame {
 				addRemoveAmigo.setVisible(true);			
 			}
 		});
+		
+		setVisible(true);
 	}
 	
 	class updatesFL implements Runnable {

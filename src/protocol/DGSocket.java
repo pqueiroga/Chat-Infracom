@@ -17,8 +17,8 @@ import utility.buffer.BufferMethods;
 
 public class DGSocket {
 	
-	private double pDescartaAck = 0.025;
-	private double pDescartaPacote = 0.025;
+	private double pDescartaAck = 0.0;
+	private double pDescartaPacote = 0.0;
 	
 	private boolean portUnreachable = false;
 	private boolean connectionRefused = false;
@@ -185,8 +185,8 @@ public class DGSocket {
 			}
 //			System.out.println("Ganhei lock de testeSendBuffer no send");
 			byte[] guardar = new byte[headerLength + length];
-			rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-			System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+			rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+			System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 					+ " - (" + rcvBase + " - 1)))");
 			cabecalha(guardar, nextSeqNum, ackNum, rcvwnd, ack, syn, fin, ackMe);
 			for (int i = headerLength, j = 0; i < headerLength + length && j < data.length; i++, j++) {
@@ -416,7 +416,7 @@ public class DGSocket {
 		public void run() {
 			int i = 0;
 			while (sendBase != nextSeqNum || rcvBase != ackNum) {
-				if (i >= 480 || !ESTADO.equals("ESTABLISHED"))
+				if (i >= 480 || portUnreachable || connectionRefused || !ESTADO.equals("ESTABLISHED"))
 					break; // esperar até 4 minutos hehehe.
 				try {
 					Thread.sleep(500);
@@ -434,7 +434,7 @@ public class DGSocket {
 			}
 			// TODO FIN
 			byte[] ack = new byte[headerLength];
-			rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+			rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
 
 			cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
 			DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
@@ -605,7 +605,7 @@ public class DGSocket {
 						testeAckMeTimerTask.cancel();
 						testeAckMeTimerTask = new AckMePls();
 						byte[] data = new byte[headerLength];
-						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+						rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
 	//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
 	//							+ " - (" + rcvBase + " - 1)))");
 						
@@ -670,7 +670,7 @@ public class DGSocket {
 						testeMsgSentTimerTask = new MsgSentTimeOut();
 						
 						byte[] newData = testeSendBuffer[circulariza(pktTimer)].getData();
-						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+						rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
 	//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
 	//							+ " - (" + rcvBase + " - 1)))");
 						setRcvwnd(newData, rcvwnd);
@@ -726,7 +726,7 @@ public class DGSocket {
 						ackTimerOn = false;
 	
 						byte[] ack = new byte[headerLength];
-						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+						rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
 	//					System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
 	//							+ " - (" + rcvBase + " - 1)))");
 						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
@@ -777,8 +777,8 @@ public class DGSocket {
 						// o ack de volta e ser atualizado sobre o sendWindowSize.
 						System.out.println("Recebi um ackme");
 						byte[] ack = new byte[headerLength];
-						rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-						System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+						rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+						System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 								+ " - (" + rcvBase + " - 1)))");
 						// envia de volta o ack-ackMe
 						cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 1);
@@ -901,7 +901,7 @@ public class DGSocket {
 							lastPacketRcvd = ackNum;
 							ackNum++;
 							sendWindowSize = getRcvwnd(data);
-							rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
+							rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
 //							System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
 //									+ " - (" + rcvBase + " - 1)))");
 							cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
@@ -939,8 +939,8 @@ public class DGSocket {
 							if (getSeqNum(data) > lastPacketRcvd + rcvwnd) {
 								System.out.println("Não cabe na janela de recepção, descartei essa merda");
 								byte[] ack = new byte[headerLength];
-								rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-								System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+								rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+								System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 										+ " - (" + rcvBase + " - 1))) = " + rcvwnd);
 								cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
 								DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
@@ -1000,8 +1000,8 @@ public class DGSocket {
 										System.out.println("segmento que preenche");
 
 										byte[] ack = new byte[headerLength];
-										rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+										rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 												+ " - (" + rcvBase + " - 1)))");
 										System.out.println("Minha rcvwnd: " + rcvwnd);
 										cabecalha(ack, nextSeqNum, ackNum, rcvwnd, (byte) 1, (byte) 0, (byte) 0, (byte) 0);
@@ -1017,6 +1017,10 @@ public class DGSocket {
 
 										System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Coloquei ack " + ackNum+ " como delayed ack");
 										// segmento na ordem, todos os dados até o número de seq esperado já tiveram seu ACK enviado
+										rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
+												+ " - (" + rcvBase + " - 1)))");
+										System.out.println("Minha rcvwnd: " + rcvwnd);
 										synchronized (delayedAckTimer) {
 											ackTimer = ackNum;
 											try {
@@ -1048,8 +1052,8 @@ public class DGSocket {
 										System.out.println("segmento na ordem, tem outro na ordem esperando por transmissão de ack");
 										System.out.println("rcvLastAcked: " + rcvLastAcked);
 										byte[] ack = new byte[headerLength];
-										rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+										rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+										System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 												+ " - (" + rcvBase + " - 1)))");
 										System.out.println("Minha rcvwnd: " + rcvwnd);
 
@@ -1103,8 +1107,8 @@ public class DGSocket {
 									testeRcvBuffer.notify();
 									
 									byte[] ack = new byte[headerLength];
-									rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+									rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 											+ " - (" + rcvBase + " - 1)))");
 									System.out.println("Minha rcvwnd: " + rcvwnd);
 
@@ -1124,8 +1128,8 @@ public class DGSocket {
 									
 									System.out.println("Recebi pacote que já reconheci, repetir ack");
 									byte[] ack = new byte[headerLength];
-									rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+									rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 											+ " - (" + rcvBase + " - 1)))");
 									System.out.println("Minha rcvwnd: " + rcvwnd);
 
@@ -1280,8 +1284,8 @@ public class DGSocket {
 									congwin = (short) (ssthresh + 3);
 									
 									byte[] newData = testeSendBuffer[circulariza(getackNum(data))].getData();
-									rcvwnd = (RcvBuffer - (lastPacketRcvd - (rcvBase - 1)));
-									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
+									rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
+									System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 											+ " - (" + rcvBase + " - 1)))");
 									System.out.println("Minha rcvwnd: " + rcvwnd);
 									// antes de retransmitir o pacote, atualiza o campo rcvwnd dele hehe.
@@ -1381,7 +1385,12 @@ public class DGSocket {
 	
 	private int getRcvwnd(byte[] data) {
 //		return (short) ((short) (data[8] << 8) + (short) (data[9]));
-		return ((data[8] & 0xFF) << 8) + ((data[9] & 0xFF)); // dessa forma não vai fazer 199 virar -57...
+		int ret = ((data[8] & 0xFF) << 8) + ((data[9] & 0xFF)); // dessa forma não vai fazer 199 virar -57...
+		if (ret > RcvBuffer) {
+			System.err.println("Rcvwnd veio negativa, puta que pariu caralho");
+			ret = 0;
+		}
+		return ret;
 	}
 	
 	private boolean getAck(byte[] data) {

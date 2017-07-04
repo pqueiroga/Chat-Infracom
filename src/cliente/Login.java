@@ -61,8 +61,7 @@ public class Login extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					Login frame = new Login();
-					frame.setVisible(true);
+					new Login();
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -497,6 +496,8 @@ public class Login extends JFrame {
 			}
 		});
 		
+		setVisible(true);
+		
 	}
 	
 	class cadastra implements Runnable {
@@ -558,7 +559,6 @@ public class Login extends JFrame {
 				int status = mp.getValue().intValue();
 				if (status == 1) {
 					Profile p = new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
-					p.setVisible(true);
 					setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
 					lblUsrInfo.setForeground(Color.GREEN);
 					lblUsrInfo.setText("Login efetuado com sucesso"); // esse daqui nunca vai ser visto
