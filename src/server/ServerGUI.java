@@ -132,24 +132,7 @@ public class ServerGUI extends JFrame {
 		JButton btnIniciar = new JButton("Iniciar");
 		btnIniciar.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				try {
-					int port = Integer.parseInt(txtPorta.getText());
-					wSocket = new DGServerSocket(port);
-					(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
-					(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
-							btnIniciar, lblPacotesperdidos))).start();
-					setTitle("Funcionando na porta " + port);
-//					(new Thread(new listTester())).start();
-					btnIniciar.setEnabled(false);
-					txtPorta.setEnabled(false);
-				} catch (NumberFormatException e) {
-					txtPorta.setText("Porta");
-				} catch (BindException e) {
-					txtPorta.setText("Porta");
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				serverGo(usuariosTextPane, lblPacotesperdidos, btnIniciar);
 			}
 		});
 		splitPane.setLeftComponent(btnIniciar);
@@ -158,24 +141,7 @@ public class ServerGUI extends JFrame {
 			@Override
 			public void keyReleased(KeyEvent arg0) {
 				if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
-					try {
-						int port = Integer.parseInt(txtPorta.getText());
-						wSocket = new DGServerSocket(port);
-						(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
-						(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
-								btnIniciar, lblPacotesperdidos))).start();
-						setTitle("Funcionando na porta " + port);
-//						(new Thread(new listTester())).start();
-						btnIniciar.setEnabled(false);
-						txtPorta.setEnabled(false);
-					} catch (NumberFormatException e) {
-						txtPorta.setText("Porta");
-					} catch (BindException e) {
-						txtPorta.setText("Porta");
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
+					serverGo(usuariosTextPane, lblPacotesperdidos, btnIniciar);
 				}
 			}
 		});	
@@ -217,26 +183,28 @@ public class ServerGUI extends JFrame {
 						e1.printStackTrace();
 					}
 				}
-				
-				// removido pois não tem necessidade mais
-//				synchronized (listaDeUsuarios) {
-//					for (String str : listaDeUsuarios) {
-//						try {
-//							str = str.substring(str.indexOf('(') + 1, str.lastIndexOf(')'));
-//							String tokens[] = str.split(", ");
-//							Socket connectionSocket = new Socket(tokens[0], Integer.parseInt(tokens[1]) + 5);
-//							OutputStream os = connectionSocket.getOutputStream();
-//							os.write(0);
-//							connectionSocket.close();
-//						} catch (Exception e1) {
-//							System.out.println("Provavelmente não deu para avisar pra (" + str + ") que "
-//									+ "o servidor vai ficar fora do ar agora.\n" + e1.getClass().getName() + 
-//									" " + e1.getMessage());
-//						}
-//					}
-//				}
 			}
 		});
+	}
+
+	private void serverGo(JTextPane usuariosTextPane, JLabel lblPacotesperdidos, JButton btnIniciar) {
+		try {
+			int port = Integer.parseInt(txtPorta.getText());
+			wSocket = new DGServerSocket(port);
+			(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
+			(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
+					btnIniciar, lblPacotesperdidos))).start();
+			setTitle("Funcionando na porta " + port);
+			btnIniciar.setEnabled(false);
+			txtPorta.setEnabled(false);
+		} catch (NumberFormatException e) {
+			txtPorta.setText("Porta");
+		} catch (BindException e) {
+			txtPorta.setText("Porta");
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }
 
