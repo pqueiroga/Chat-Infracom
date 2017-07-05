@@ -1,5 +1,6 @@
 package cliente;
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -28,7 +29,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.BoxLayout;
@@ -74,7 +75,9 @@ public class Chat extends JFrame {
 	private Thread msgrcv;
 	private JLabel lblMsgInfo;
 	private int[] pktsPerdidos; // ponteiro importante
-	private List<DGServerSocket> SSList;
+	private ArrayList<DGServerSocket> SSList;
+	
+	private ConcurrentHashMap<String, DownloadPainel> downloads;
 	
 	private int friendUploadPort;
 	
@@ -93,6 +96,8 @@ public class Chat extends JFrame {
     private JScrollPane txtTypeScrollPane;
     private JScrollPane scrollPane;
     private JTextPane msgTextPane;
+    
+    private double pDescartaPacotes;
     /**
 	 * Create the frame.
 	 */
@@ -101,7 +106,7 @@ public class Chat extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					new Chat("eu", "ele", 0, null, null, null, null, null, true); //new Socket("localhost", 2030));
+					new Chat("eu", "ele", 0, null, null, null, null, null, 0, true); //new Socket("localhost", 2030));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -111,8 +116,12 @@ public class Chat extends JFrame {
 	
 	public Chat(String usr, String friend, int friendUploadPort, DGSocket friendSocketConstrutor,
 			DGSocket msgStatusSocketConstrutor, ArrayList<DGServerSocket> SSList,
-			ArrayList<String> amigos, int[] pktsPerdidos, boolean initVisible) throws IOException {
+			ArrayList<String> amigos, int[] pktsPerdidos, double pDescartaPacotes, boolean initVisible) throws IOException {
 		setResizable(false);
+		
+		this.downloads = new ConcurrentHashMap<String, DownloadPainel>();
+		
+		this.pDescartaPacotes = pDescartaPacotes;
 		
 		this.friendName = friend;
 		
@@ -284,31 +293,31 @@ public class Chat extends JFrame {
 		txtTypeYourMessage.setEnabled(true);
 		txtTypeYourMessage.setEditable(true);
 //		File teste = new File("ablablabsldiaodasidoasibdoaiedaoisjd");
-//		DownloadPainel downloadInfo = new DownloadPainel(teste, new JProgressBar());
+//		DownloadPainel downloadInfo = new DownloadPainel(teste, new JProgressBar(), new JButton("Abrir"));
 //		downloadPanel.add(downloadInfo);
 //		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar(), new JButton("Abrir"));
+//		downloadPanel.add(downloadInfo);
+		
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
 //		downloadPanel.add(downloadInfo);
 //		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
 //		downloadPanel.add(downloadInfo);
 //		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
 //		downloadPanel.add(downloadInfo);
 //		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
 //		downloadPanel.add(downloadInfo);
 //		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
 //		downloadPanel.add(downloadInfo);
 //		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
 //		downloadPanel.add(downloadInfo);
 //		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel("Nome do Arquivo");
+//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
 //		downloadPanel.add(downloadInfo);
 		
 		this.txtTypeYourMessage.addKeyListener(new KeyAdapter() {
@@ -399,6 +408,7 @@ public class Chat extends JFrame {
 				return;
 			}
 			DGSocket dgsUploader;
+    		long[] estimatedRTT = {-1};
 			FileInputStream fInputStream;
 			try {
 				fInputStream = new FileInputStream(file);
@@ -410,7 +420,7 @@ public class Chat extends JFrame {
 				return;
 			}
         	try {
-        		dgsUploader = new DGSocket(Chat.this.pktsPerdidos,
+        		dgsUploader = new DGSocket(estimatedRTT, pDescartaPacotes, Chat.this.pktsPerdidos,
         				friendSocket.getInetAddress().getHostName(),
         				friendUploadPort);
         	} catch (Exception e) {
@@ -438,7 +448,7 @@ public class Chat extends JFrame {
         		BufferMethods.receiveFeedBack(dgsUploader);
         		
                 // diz nome do arquivo que estarei enviando
-        		BufferMethods.writeString(file.getName(), dgsUploader);
+        		BufferMethods.writeChatString(file.getName(), dgsUploader);
         	} catch (Exception e) {
         		try {
 					dgsUploader.close(false);
@@ -494,7 +504,19 @@ public class Chat extends JFrame {
 			JProgressBar progressBar = new JProgressBar();
 			progressBar.setString("");
 			progressBar.setStringPainted(true);
-			DownloadPainel downloadInfo = new DownloadPainel(file, progressBar);
+			JButton btnAbrir = new JButton("Abrir");
+			btnAbrir.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent evt) {
+					try {
+						Desktop.getDesktop().open(file);
+					} catch (IOException e) {
+						JOptionPane.showMessageDialog(Chat.this,
+								"Erro tentando abrir arquivo " + file.getName(),
+								"Erro", JOptionPane.WARNING_MESSAGE);
+					}
+				}
+			});
+			DownloadPainel downloadInfo = new DownloadPainel(file, progressBar, btnAbrir);
 			downloadInfo.setAbrir(true);
 			downloadPanel.add(downloadInfo);
 			downloadPanel.validate();
@@ -510,10 +532,13 @@ public class Chat extends JFrame {
 					dgsUploader.send(buffer, bytesRead);
 					
 					tf = System.currentTimeMillis();
+					downloadInfo.setLblRTT(estimatedRTT[0]);
 					deltaT = tf - t0;
 					estimativa = atualizaProgresso(fileLength, toDownload, remainingSize,
 							deltaT, estimativa, progressBar);
 				}
+				downloadInfo.killlblRTT();
+				downloads.put(file.getName(), downloadInfo);
 				progressBar.setStringPainted(false);
 			} catch (Exception e) {
 				downloadPanel.remove(downloadInfo);
@@ -572,6 +597,16 @@ public class Chat extends JFrame {
 								lblMsgInfo.setText("mensagem lida");
 							}
 						}
+					} else if (status == 3) {
+						// arquivo conseguiu ser aberto
+						try {
+							String fileName = BufferMethods.readChatString(msgStatusSocket);
+							downloads.get(fileName).setLblAberto("Aberto por " + friendName);
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						
 					}
 				} catch (SocketException e) {
 					e.printStackTrace();
@@ -590,9 +625,10 @@ public class Chat extends JFrame {
 	class BaixaArquivo implements Runnable {
 		
 		private DGSocket connectionSocket;
-		
-		public BaixaArquivo(DGSocket dgs) {
+		private long[] estimatedrtt;
+		public BaixaArquivo(DGSocket dgs, long[] estimatedrtt) {
 			this.connectionSocket = dgs;
+			this.estimatedrtt = estimatedrtt;
 		}
 		
 		public void run() {
@@ -600,19 +636,20 @@ public class Chat extends JFrame {
 			try {
 				String directory = "Download_Dump" + File.separator;
 				BufferMethods.sendFeedBack(1, connectionSocket);
-				String fileName = BufferMethods.readString(connectionSocket);
+				String fileName = BufferMethods.readChatString(connectionSocket);
 				
 				JProgressBar progressBar = new JProgressBar();
 				progressBar.setString("");
 				progressBar.setStringPainted(true);
-				fileName = fileName.replaceAll(" ", "");
+//				fileName = fileName.replaceAll(" ", "");
 				System.out.println(directory + fileName);
 				File arquivoReceptor = new File(directory + fileName);
 				if (arquivoReceptor.isFile()) {
 					arquivoReceptor.delete();
 				}
 				arquivoReceptor.createNewFile();
-				downloadInfo = new DownloadPainel(arquivoReceptor, progressBar);
+				JButton btnAbrir = new JButton("Abrir");
+				downloadInfo = new DownloadPainel(arquivoReceptor, progressBar, btnAbrir);
 				downloadInfo.setAbrir(false);
 				downloadPanel.add(downloadInfo);
 				downloadPanel.validate();
@@ -624,7 +661,6 @@ public class Chat extends JFrame {
 					byte[] buffer = new byte[4096];
 					int bytesRead = 0;
 					
-					
 					long t0 = System.currentTimeMillis();
 					long toDownload = remainingSize;
 					long tf, deltaT;
@@ -635,6 +671,7 @@ public class Chat extends JFrame {
 						remainingSize -= bytesRead;
 						
 						tf = System.currentTimeMillis();
+						downloadInfo.setLblRTT(estimatedrtt[0]);
 						deltaT = tf - t0;
 						estimativa = atualizaProgresso(fileSize, toDownload, remainingSize,
 								deltaT, estimativa, progressBar);
@@ -643,8 +680,23 @@ public class Chat extends JFrame {
 						outToFile.write(buffer, 0, bytesRead);
 						if (remainingSize == 0) break;
 					}
+					btnAbrir.addActionListener(new ActionListener() {
+						public void actionPerformed(ActionEvent evt) {
+							try {
+								Desktop.getDesktop().open(arquivoReceptor);
+								msgNova = true;
+								feedbackaMsgStatus(3);
+								BufferMethods.writeChatString(fileName, msgStatusSocket);
+							} catch (IOException e) {
+								JOptionPane.showMessageDialog(Chat.this,
+										"Erro tentando abrir arquivo " + arquivoReceptor.getName(),
+										"Erro", JOptionPane.WARNING_MESSAGE);
+							}
+						}
+					});
 					downloadInfo.setAbrir(true);
 					progressBar.setStringPainted(false);
+					downloadInfo.killlblRTT();
 				} catch (Exception e) {
 					if (downloadInfo != null && remainingSize != 0) {
 						downloadPanel.remove(downloadInfo);
@@ -666,22 +718,6 @@ public class Chat extends JFrame {
 			}
 		}
 	}
-	
-//	class EsperaArquivos implements Runnable {
-//		public void run() {
-//			while (true) {
-//				DGSocket connectionSocket = null;
-//				try {
-//					connectionSocket = SSList.get(2).accept(pktsPerdidos);
-//					String friendUploader = BufferMethods.readString(connectionSocket);
-//					Chat.this.setVisible(true);
-//					(new Thread(new BaixaArquivo(connectionSocket))).start();
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		}
-//	}
 	
 	class ReceiveMessages implements Runnable {
 		private boolean finished = false;
@@ -716,8 +752,8 @@ public class Chat extends JFrame {
 		}
 	}
 	
-	public void comecaBaixaArquivos(DGSocket connectionSocket) {
-		(new Thread(new BaixaArquivo(connectionSocket))).start();
+	public void comecaBaixaArquivos(DGSocket connectionSocket, long[] estimatedrtt) {
+		(new Thread(new BaixaArquivo(connectionSocket, estimatedrtt))).start();
 	}
 	
 	private double atualizaProgresso(long fileLength, long toDownload, long remainingSize,
@@ -731,6 +767,7 @@ public class Chat extends JFrame {
 		quickConc = new StringBuilder();
 		quickConc.append(String.format("%.0f",estimativa)).append(" s");
 		progressBar.setString(quickConc.toString());
+		
 		return estimativa;
 	}
 
@@ -767,10 +804,10 @@ public class Chat extends JFrame {
 //											"Aha!", JOptionPane.WARNING_MESSAGE);
 
 									friendUploadPort = friendPort + 2;
-									friendSocket = new DGSocket(Chat.this.pktsPerdidos, friendIP, friendPort);
+									friendSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
 									BufferMethods.writeString(usr, friendSocket);
 									BufferMethods.sendInt(SSList.get(2).getLocalPort(), friendSocket);
-									msgStatusSocket = new DGSocket(Chat.this.pktsPerdidos, friendIP, friendPort +1);
+									msgStatusSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort +1);
 									msgstatusthread = new Thread(new MsgStatusIn());
 									msgrcv = new Thread(new ReceiveMessages());
 									msgstatusthread.start();
@@ -848,9 +885,13 @@ public class Chat extends JFrame {
 	}
 
 	private void feedbackaMsgStatus() {
+		feedbackaMsgStatus(2);
+	}
+	
+	private void feedbackaMsgStatus(int status) {
 		if (servicoStatusMsgOk && msgNova) {
 			try {
-				BufferMethods.sendFeedBack(2, msgStatusSocket);
+				BufferMethods.sendFeedBack(status, msgStatusSocket);
 				msgNova = false;
 			} catch (Exception e1) {
 				e1.printStackTrace();
@@ -890,5 +931,9 @@ public class Chat extends JFrame {
 	
 	public String getDocMsg() throws BadLocationException {
 		return docMsg.getText(0, docMsg.getLength());
+	}
+
+	public void setpDescartaPacotes(double pDescartaPacotes) {
+		this.pDescartaPacotes = pDescartaPacotes;
 	}
 }

@@ -43,7 +43,7 @@ public class ServidorComeco implements Runnable {
 		(new Thread(new atualizaPacotesPerdidosHehe())).start();
 		while (true) {
 			try {
-				DGSocket connectionSocket = servidor.accept(pktsPerdidos);
+				DGSocket connectionSocket = servidor.accept(0, pktsPerdidos);
 				(new Thread(new ServidorConta(timer,
 						connectionSocket, listaDeUsuarios))).start();
 			} catch (SocketException e) {

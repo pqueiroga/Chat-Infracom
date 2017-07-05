@@ -23,12 +23,14 @@ public class DownloadPainel extends JPanel {
 	private static final long serialVersionUID = 4828429621225721687L;
 	public int percentage = 0;
 	private JButton btnAbrir;
-
+	private JLabel lblRTT;
+	JLabel lblAberto;
+	
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					new DownloadPainel(null, new JProgressBar());
+					new DownloadPainel(null, new JProgressBar(), new JButton());
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -39,21 +41,29 @@ public class DownloadPainel extends JPanel {
 	/**
 	 * Create the panel.
 	 */
-	public DownloadPainel(File file, JProgressBar progressBar) {
+	public DownloadPainel(File file, JProgressBar progressBar, JButton btnAbrir) {
+		this.btnAbrir = btnAbrir;
 		int teste = 133;
 		this.setSize(teste, 87);
 		
 		JLabel lblNomearquivo = new JLabel(file.getName());
+		lblNomearquivo.setToolTipText(lblNomearquivo.getText());
+		lblRTT = new JLabel("rtt: ");
+		lblRTT.setToolTipText("teste do caralho");
 		
-		btnAbrir = new JButton("Abrir");
+		lblAberto = new JLabel("");
+		
+		DownloadPainel.this.btnAbrir.setToolTipText("Abrir " + file.getName());
 		GroupLayout groupLayout = new GroupLayout(this);
 		groupLayout.setHorizontalGroup(
 			groupLayout.createParallelGroup(Alignment.LEADING)
 				.addGroup(groupLayout.createSequentialGroup()
 					.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
 						.addComponent(progressBar, teste, teste, teste)
-						.addComponent(btnAbrir, teste, teste, teste)
-						.addComponent(lblNomearquivo, teste, teste, teste))
+						.addComponent(DownloadPainel.this.btnAbrir, teste, teste, teste)
+						.addComponent(lblNomearquivo, teste, teste, teste)
+						.addComponent(lblRTT, teste, teste, teste)
+						.addComponent(lblAberto, teste, teste, teste))
 					.addContainerGap(teste, teste))
 		);
 		groupLayout.setVerticalGroup(
@@ -63,29 +73,27 @@ public class DownloadPainel extends JPanel {
 					.addGap(5)
 					.addComponent(progressBar, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 					.addGap(5)
-					.addComponent(btnAbrir))
-					.addGap(80)
+					.addComponent(DownloadPainel.this.btnAbrir)
+					.addGap(3)
+					.addComponent(lblRTT)
+					.addGap(3)
+					.addComponent(lblAberto)
+					.addGap(12))
 		);
 		setLayout(groupLayout);
-		
-		btnAbrir.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent evt) {
-				try {
-					Desktop.getDesktop().open(file);
-				} catch (IOException e) {
-					JOptionPane.showMessageDialog(DownloadPainel.this,
-							"Erro tentando abrir arquivo " + file.getName(),
-							"Erro", JOptionPane.WARNING_MESSAGE);
-				}
-//				String exe = "xdg-open " + file.getAbsolutePath();
-//				System.out.println(exe);
-//				try {
-//					Runtime.getRuntime().exec(exe);
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
-			}
-		});
+	}
+	
+	public void setLblAberto(String status) {
+		lblAberto.setText(status);
+		lblAberto.setToolTipText(lblAberto.getText());
+	}
+	
+	public void killlblRTT() {
+		this.remove(lblRTT);
+	}
+	
+	public void setLblRTT(long rtt) {
+		lblRTT.setText("rtt: " + rtt + " ms");
 	}
 	
 	public void setAbrir(boolean bulian) {

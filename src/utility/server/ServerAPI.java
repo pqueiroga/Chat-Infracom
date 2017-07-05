@@ -25,11 +25,13 @@ public class ServerAPI {
 	private String ip;
 	private int port;
 	private int[] pktsPerdidos;
+	private double pDescartaPacotes;
 	
-	public ServerAPI(int[] pktsPerdidos, String ip, int port) {
+	public ServerAPI(double pDescartaPacotes, int[] pktsPerdidos, String ip, int port) {
 		this.ip = ip;
 		this.port = port;
 		this.pktsPerdidos = pktsPerdidos;
+		this.pDescartaPacotes = pDescartaPacotes;
 	}
 	
 	/**
@@ -48,7 +50,7 @@ public class ServerAPI {
 		DGSocket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -121,7 +123,7 @@ public class ServerAPI {
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 			System.out.println("Consegui uma connectionsocket pra falar com o server");
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
@@ -251,7 +253,7 @@ public class ServerAPI {
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			// cadastro(0), login(1)		
@@ -302,7 +304,7 @@ public class ServerAPI {
 		DGSocket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -344,7 +346,7 @@ public class ServerAPI {
 		ArrayList<String> retorno = new ArrayList<String>();
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -386,7 +388,7 @@ public class ServerAPI {
 	public int solicitaAmizade(String user, String friend) throws IOException {
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -494,7 +496,7 @@ public class ServerAPI {
 		ArrayList<String> retorno = new ArrayList<String>();
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -535,7 +537,7 @@ public class ServerAPI {
 	private int aceitaRecusaAmizade(String user, String friend, int op) throws IOException {
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			

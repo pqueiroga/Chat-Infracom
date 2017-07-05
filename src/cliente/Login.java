@@ -279,41 +279,6 @@ public class Login extends JFrame {
 				String portOk = validaPort(txtPort.getText());
 				if (usrOk.isEmpty() && pwOk.isEmpty() && ipOk.isEmpty() && portOk.isEmpty()) {
 					(new Thread(new loga())).start();
-//					try {
-//						notBrokenFinished = false;
-////						(new Thread(new naoQuebrou())).start();
-//						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
-//						Map.Entry<ArrayList<DGServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
-//						notBrokenFinished = true;
-//						int status = mp.getValue().intValue();
-//						if (status == 1) {
-//							Profile p = new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
-//							p.setVisible(true);
-//							setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
-//							lblUsrInfo.setForeground(Color.GREEN);
-//							lblUsrInfo.setText("Login efetuado com sucesso"); // esse daqui nunca vai ser visto
-//						} else if (status == 2) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Usuário já está online");
-//						} else if (status == 0) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Usuário ou senha incorretos");
-//						} else if (status == -1) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Não conseguimos portas livres");
-//						}
-//					} catch (ConnectException e1) {
-//						notBrokenFinished = true;
-//						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
-//						}
-//					} catch (Exception e1) {
-//						notBrokenFinished = true;
-//						lblUsrInfo.setForeground(Color.RED);
-//						lblUsrInfo.setText("Erro tosco durante o login");
-//						e1.printStackTrace();
-//					}
 				} else {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText(usrOk);
@@ -327,10 +292,6 @@ public class Login extends JFrame {
 					txtIp.setEnabled(true);
 					txtPort.setEnabled(true);
 				}
-//				usrTextField.setEnabled(true);
-//				passwordField.setEnabled(true);
-//				btnCadastro.setEnabled(true);
-//				btnLogin.setEnabled(true);
 			}
 		});
 		btnCadastro.addActionListener(new ActionListener() {
@@ -347,43 +308,6 @@ public class Login extends JFrame {
 				String portOk = validaPort(txtPort.getText());
 				if (usrOk.isEmpty() && pwOk.isEmpty() && ipOk.isEmpty() && portOk.isEmpty()) {
 					(new Thread(new cadastra())).start();
-//					try {
-//						notBrokenFinished = false;
-////						(new Thread(new naoQuebrou())).start(); 
-//						// TODO DESCOBRIR COMO FAZER A GUI NÃO FICAR FREEZADA POR ESSES LISTENERS
-//						toServer = new ServerAPI(txtIp.getText(), Integer.parseInt(txtPort.getText()));
-//						int b = toServer.cadastro(usrTextField.getText(), new String(passwordField.getPassword()));
-//						notBrokenFinished = true;
-//						if (b == 1) {
-//							lblUsrInfo.setForeground(Color.GREEN);
-//							lblUsrInfo.setText("Cadastro efetuado com sucesso: " + usrTextField.getText());
-//						} else if (b == 2) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Nome de usuário indisponível: " + usrTextField.getText());
-//						} else if (b == 0 || b == -1) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
-//						} else if (b == 3) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Nome de usuário ou senha inválidos: " + usrTextField.getText());
-//						}
-//					} catch (ConnectException e1) {
-//						notBrokenFinished = true;
-//						if (e1.getMessage().equals("Connection refused (Connection refused)")) {
-//							lblUsrInfo.setForeground(Color.RED);
-//							lblUsrInfo.setText("Não foi possível se conectar ao servidor");
-//						}
-//					} catch (IOException e1) {
-//						notBrokenFinished = true;
-//						lblUsrInfo.setForeground(Color.RED);
-//						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
-//						e1.printStackTrace();
-//					} catch (GeneralSecurityException e1) {
-//						notBrokenFinished = true;
-//						lblUsrInfo.setForeground(Color.RED);
-//						lblUsrInfo.setText("Não foi possível cadastrar: " + usrTextField.getText());
-//						e1.printStackTrace();
-//					}
 				} else {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText(usrOk);
@@ -397,10 +321,6 @@ public class Login extends JFrame {
 					txtIp.setEnabled(true);
 					txtPort.setEnabled(true);
 				}
-//				usrTextField.setEnabled(true);
-//				passwordField.setEnabled(true);
-//				btnCadastro.setEnabled(true);
-//				btnLogin.setEnabled(true);
 			}
 		});
 		
@@ -505,7 +425,7 @@ public class Login extends JFrame {
 			try {
 				notBrokenFinished = false;
 				(new Thread(new naoQuebrou())).start(); 
-				toServer = new ServerAPI(new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
+				toServer = new ServerAPI(0, new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
 				int b = toServer.cadastro(usrTextField.getText(), new String(passwordField.getPassword()));
 				notBrokenFinished = true;
 				if (b == 1) {
@@ -553,12 +473,13 @@ public class Login extends JFrame {
 			try {
 				notBrokenFinished = false;
 				(new Thread(new naoQuebrou())).start();
-				toServer = new ServerAPI(new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
+				toServer = new ServerAPI(0, new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
 				Map.Entry<ArrayList<DGServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 				notBrokenFinished = true;
 				int status = mp.getValue().intValue();
 				if (status == 1) {
-					dispose();
+//					dispose(); quando eu uso dispose fica um ícone fantasma na barra de tarefas
+					setVisible(false);
 					new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
 				} else if (status == 2) {
 					lblUsrInfo.setForeground(Color.RED);

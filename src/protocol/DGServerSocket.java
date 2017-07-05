@@ -23,7 +23,7 @@ public class DGServerSocket {
 	public static void main(String[] args) throws Exception {
 		DGServerSocket teste = new DGServerSocket(2020);
 		System.out.println("Criei teste");
-		DGSocket teste2 = teste.accept(new int[1]);
+		DGSocket teste2 = teste.accept(0, new int[1]);
 		System.out.println("Recebi teste2");
 //		byte[] data = new byte[1024];
 //		System.out.println("Chamei receive na main do dgserversocket");
@@ -97,10 +97,14 @@ public class DGServerSocket {
 		if (this.closed) {
 			throw new SocketException("DGServerSocket já está fechada.");
 		}
-		return accept(new int[1]);
+		return accept(0, new int[1]);
 	}
 	
-	public DGSocket accept(int[] pktsPerdidos) throws Exception {
+	public DGSocket accept(double pDescartaPacotes, int[] pktsPerdidos) throws Exception {
+		return accept(null, pDescartaPacotes, pktsPerdidos);
+	}
+	
+	public DGSocket accept(long[] estimatedRTT, double pDescartaPacotes, int[] pktsPerdidos) throws Exception {
 		if (this.closed) {
 			throw new SocketException("DGServerSocket já está fechada.");
 		}
@@ -120,7 +124,7 @@ public class DGServerSocket {
 			
 			this.ackNum = getSeqNum(data) + 1;
 			
-			retorno2 = new DGSocket(pktsPerdidos, inicia.getAddress().getHostName(),
+			retorno2 = new DGSocket(estimatedRTT, pDescartaPacotes, pktsPerdidos, inicia.getAddress().getHostName(),
 					inicia.getPort(), "SYN RECEIVED", this.ackNum);
 			System.out.println("Vou travar esperando estado hehe");
 	

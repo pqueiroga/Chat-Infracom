@@ -37,7 +37,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 	private JTextField textFieldFriend;
 	
 	public AddRemoveAmigoDialog(int[] pktsPerdidos, String username, String ip, int port) {
-		ServerAPI toServer = new ServerAPI(pktsPerdidos, ip, port);
+		ServerAPI toServer = new ServerAPI(0, pktsPerdidos, ip, port);
 		int randomNum = ThreadLocalRandom.current().nextInt(3, 9 + 1);
 		Color cor;
 		switch (randomNum) {

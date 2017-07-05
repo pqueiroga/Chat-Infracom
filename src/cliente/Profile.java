@@ -29,14 +29,17 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.text.BadLocationException;
 
 import protocol.DGServerSocket;
 import protocol.DGSocket;
 import utility.buffer.BufferMethods;
 import utility.server.ServerAPI;
+import javax.swing.JSlider;
 
-public class Profile extends JFrame {
+public class Profile extends JFrame implements ChangeListener {
 
 	/**
 	 * 
@@ -61,9 +64,12 @@ public class Profile extends JFrame {
 	private JButton btnAddRemoveFriend;
 	private JLabel lblPacotesPerdidos;
 	
+	private double pDescartaPacotes = 0;
+	
 	private ConcurrentHashMap<String, Chat> chats;
 	
 	private int[] pktsPerdidos = new int[1];
+	private JSlider slider;
 	/**
 	 * Create the frame.
 	 */
@@ -93,7 +99,7 @@ public class Profile extends JFrame {
 		this.addRemoveAmigo = new AddRemoveAmigoDialog(pktsPerdidos, username, ip, port);
 		this.addRemoveAmigo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		this.contatandoServStr = "Tentando contatar servidor";
-		ServerAPI toServer = new ServerAPI(pktsPerdidos, ip, port);
+		ServerAPI toServer = new ServerAPI(pDescartaPacotes, pktsPerdidos, ip, port);
 		
 		this.amigos = new ArrayList<String>();
 		
@@ -132,7 +138,7 @@ public class Profile extends JFrame {
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		GridBagLayout gbl_contentPane = new GridBagLayout();
-		gbl_contentPane.columnWidths = new int[]{186, 55, 55, 0};
+		gbl_contentPane.columnWidths = new int[]{186, 156, 55, 0};
 		gbl_contentPane.rowHeights = new int[]{0, 0, 0, 0, 0};
 		gbl_contentPane.columnWeights = new double[]{0.0, 0.0, 1.0, Double.MIN_VALUE};
 		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 1.0, 0.0, Double.MIN_VALUE};
@@ -142,7 +148,7 @@ public class Profile extends JFrame {
 		lblNomeDeUsurio.setFont(new Font("Dialog", Font.BOLD, 20));
 		GridBagConstraints gbc_lblNomeDeUsurio = new GridBagConstraints();
 		gbc_lblNomeDeUsurio.gridwidth = 3;
-		gbc_lblNomeDeUsurio.insets = new Insets(0, 0, 5, 5);
+		gbc_lblNomeDeUsurio.insets = new Insets(0, 0, 5, 0);
 		gbc_lblNomeDeUsurio.anchor = GridBagConstraints.WEST;
 		gbc_lblNomeDeUsurio.gridx = 0;
 		gbc_lblNomeDeUsurio.gridy = 0;
@@ -226,6 +232,20 @@ public class Profile extends JFrame {
 		gbc_lblConectividadeComServidor.gridy = 3;
 		contentPane.add(lblConectividadeComServidor, gbc_lblConectividadeComServidor);
 		
+		slider = new JSlider();
+		slider.setMinorTickSpacing(5);
+		slider.setMajorTickSpacing(10);
+		slider.setPaintTicks(true);
+		slider.setMaximum(50);
+		slider.setToolTipText("0~5% de perda forçada de pacotes");
+		slider.setValue(0);
+		GridBagConstraints gbc_slider = new GridBagConstraints();
+		gbc_slider.fill = GridBagConstraints.HORIZONTAL;
+		gbc_slider.insets = new Insets(0, 0, 0, 5);
+		gbc_slider.gridx = 1;
+		gbc_slider.gridy = 3;
+		contentPane.add(slider, gbc_slider);
+				
 		lblPacotesPerdidos = new JLabel("0");
 		lblPacotesPerdidos.setToolTipText("Pacotes perdidos");
 		lblPacotesPerdidos.setForeground(Color.GREEN);
@@ -243,6 +263,8 @@ public class Profile extends JFrame {
 		tAtualizaPktsPerdidos.start();
 		Thread tEsperaArquivo = new Thread(new EsperaArquivos());
 		tEsperaArquivo.start();
+		
+		slider.addChangeListener(this);
 		
 		addWindowListener(new WindowAdapter() {
 			@Override
@@ -285,8 +307,6 @@ public class Profile extends JFrame {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-					
-					
 				}
 				
 				System.exit(0);
@@ -307,12 +327,12 @@ public class Profile extends JFrame {
 		@Override
 		public void run() {
 			while (true) {
-		    	ServerAPI toServerConc = new ServerAPI(pktsPerdidos, ip, port);
+		    	ServerAPI toServerConc = new ServerAPI(pDescartaPacotes, pktsPerdidos, ip, port);
 		    	try {
 					ArrayList<String> pendentes = toServerConc.pegaSolicitacoesPendentes(username);
 					if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
 						try {
-							int loginstatus = toServerConc.login(username, listenList.get(0).getLocalPort());
+							int loginstatus = toServerConc.login( username, listenList.get(0).getLocalPort());
 							if (loginstatus == 2) {
 								toServerConc.logout(username);
 								toServerConc.login(username, listenList.get(0).getLocalPort());
@@ -434,12 +454,12 @@ public class Profile extends JFrame {
 										if (chats.containsKey(friendnameLocal)) {
 											chats.get(friendnameLocal).setVisible(true);
 										} else {
-											DGSocket connectionSocket = new DGSocket(pktsPerdidos, friendIPLocal, friendPortLocal);
+											DGSocket connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, friendPortLocal);
 											BufferMethods.writeString(username, connectionSocket);
 											BufferMethods.sendInt(Profile.this.listenList.get(2).getLocalPort(), connectionSocket);
-											DGSocket msgStatusSocket = new DGSocket(pktsPerdidos, friendIPLocal, (friendPortLocal + 1));
+											DGSocket msgStatusSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, (friendPortLocal + 1));
 											Chat novoChat = new Chat(username, friendnameLocal, friendPortLocal + 2, connectionSocket,
-													msgStatusSocket, listenList, amigos, pktsPerdidos, true);
+													msgStatusSocket, listenList, amigos, pktsPerdidos, pDescartaPacotes, true);
 											chats.put(friendnameLocal, novoChat);
 										}
 									} catch (Exception e) {
@@ -510,15 +530,15 @@ public class Profile extends JFrame {
 			while (true) {
 				DGSocket connectionSocket = null;
 				try {
-					connectionSocket = listenList.get(0).accept(pktsPerdidos);
+					connectionSocket = listenList.get(0).accept(pDescartaPacotes, pktsPerdidos);
 					String friendname = BufferMethods.readString(connectionSocket);
 					int uploadPort = BufferMethods.receiveInt(connectionSocket);
-					DGSocket msgStatusSocket = listenList.get(1).accept(pktsPerdidos);
+					DGSocket msgStatusSocket = listenList.get(1).accept(pDescartaPacotes, pktsPerdidos);
 					if (chats.containsKey(friendname)) {
 						chats.get(friendname).setStuff(uploadPort, connectionSocket, msgStatusSocket);
 					} else {
 						Chat novoChat = new Chat(username, friendname, uploadPort, connectionSocket, msgStatusSocket,
-								listenList, amigos, pktsPerdidos, false);
+								listenList, amigos, pktsPerdidos, pDescartaPacotes, false);
 						chats.put(friendname, novoChat);
 					}
 					// jdialog debugging hehe
@@ -538,17 +558,31 @@ public class Profile extends JFrame {
 			while (true) {
 				DGSocket connectionSocket = null;
 				try {
-					connectionSocket = listenList.get(2).accept(pktsPerdidos);
+					long[] estimatedrtt = {-1};
+					connectionSocket = listenList.get(2).accept(estimatedrtt, pDescartaPacotes, pktsPerdidos);
 					String friendUploader = BufferMethods.readString(connectionSocket);
 					if (chats.containsKey(friendUploader)) {
 						chats.get(friendUploader).setVisible(true);
-						chats.get(friendUploader).comecaBaixaArquivos(connectionSocket);
+						chats.get(friendUploader).comecaBaixaArquivos(connectionSocket, estimatedrtt);
 					} else {
 						connectionSocket.close(true);
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
+			}
+		}
+	}
+
+	@Override
+	public void stateChanged(ChangeEvent arg0) {
+		JSlider source = (JSlider) arg0.getSource();
+		if (!source.getValueIsAdjusting()) {
+			pDescartaPacotes = source.getValue() / 1000.00;
+			System.out.println("pDescartaPacotes em profile: " + pDescartaPacotes);
+			source.setToolTipText("" + (pDescartaPacotes * 100) + "% de perda forçada de pacotes");
+			for (Entry<String, Chat> xat : chats.entrySet()) {
+				xat.getValue().setpDescartaPacotes(pDescartaPacotes);
 			}
 		}
 	}

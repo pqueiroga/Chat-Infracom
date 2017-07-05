@@ -17,7 +17,6 @@ import utility.buffer.BufferMethods;
 
 public class DGSocket {
 	
-	private double pDescartaAck = 0.0;
 	private double pDescartaPacote = 0.0;
 	
 	private boolean portUnreachable = false;
@@ -28,13 +27,12 @@ public class DGSocket {
 	
 	private String ESTADO;
 	
-	private short RcvBuffer = 80;
-	private short RcvBufferSize = 80;
+	private short RcvBuffer = 50;
 	private int headerLength = 14;
 	
 	private boolean recuperacaoRapida = false;
 	private short congwin = 1;
-	private short ssthresh = 64;
+	private short ssthresh = 20;
 	private byte acksDuplicados = 0;
 	private short varPrevencao = 0;
 	
@@ -46,11 +44,11 @@ public class DGSocket {
 	private int sendBase; // sendBase - 1 nos diz LastPacketAcked
 	private int sendWindowSize;
 	private int rcvwnd;
-	private DatagramPacket[] testeSendBuffer = new DatagramPacket[RcvBufferSize];
-	private byte[] testeSendBufferEstado = new byte[RcvBufferSize]; // 1 n enviado, 2 enviado, 3 reconhecido
-//	private int[] acksDuplicados = new int[RcvBufferSize];
-	private DatagramPacket[] testeRcvBuffer = new DatagramPacket[RcvBufferSize];
-	private boolean[] testeRcvBufferEstado = new boolean[RcvBufferSize]; // true posição ocupada, false posição livre
+	private DatagramPacket[] testeSendBuffer = new DatagramPacket[RcvBuffer];
+	private byte[] testeSendBufferEstado = new byte[RcvBuffer]; // 1 n enviado, 2 enviado, 3 reconhecido
+//	private int[] acksDuplicados = new int[RcvBuffer];
+	private DatagramPacket[] testeRcvBuffer = new DatagramPacket[RcvBuffer];
+	private boolean[] testeRcvBufferEstado = new boolean[RcvBuffer]; // true posição ocupada, false posição livre
 	
 	/**
 	 * rcvBase nos diz onde está/estará o pacote válido para ser pego.
@@ -64,7 +62,8 @@ public class DGSocket {
 	private boolean closed = false, msgTimerOn = false, ackTimerOn = false, ackMeTimerOn = false;
 	private long timeOutInterval = 1000;
 	private long timeOutRTT = 1000;
-	private long timeSent, timeAcked, sampleRTT, estimatedRTT = -1, devRTT;
+	private long timeSent, timeAcked, sampleRTT, devRTT;
+	private long[] estimatedRTT = {-1};
 	private int packetSample = -1;
 	
 	private Timer msgSentTimer = new Timer(true); // quero que sejam daemons e não impeçam ngm
@@ -79,14 +78,21 @@ public class DGSocket {
 	
 	private int[] pktsPerdidos;
 	
-	public DGSocket(int[] pktsPerdidos, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
-		this(pktsPerdidos, -1, remoteIP, remotePort, ESTADO, ackNum);
+	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+//		this(pktsPerdidos, -1, remoteIP, remotePort, ESTADO, ackNum);
+		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, ESTADO, ackNum);
 	}
 	
 //	public DGSocket(String remoteIP, int remotePort) throws IOException {
 //		this(new int[1], -1, remoteIP, remotePort, "CLOSED", 0);
 //	}
 	
+	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
+		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
+	}	
+	public DGSocket(double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
+		this(null, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
+	}
 	public DGSocket(int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
 		this(pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
 	}
@@ -95,6 +101,19 @@ public class DGSocket {
 	}
 	
 	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+		this(null, 0, pktsPerdidos, port, remoteIP, remotePort, ESTADO, ackNum);
+	}
+	
+	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+		if (estimatedrtt == null) {
+			this.estimatedRTT[0] = -1;
+		} else {
+			this.estimatedRTT = estimatedrtt;
+		}
+		this.estimatedRTT[0] = -1; // pra caso alguém tenha usado errado, ele sempre tem que começar com
+		// -1 anyways.
+		System.out.println("pDescartaPacotes quando chega em DGSocket: " + pDescartaPacotes);
+		this.pDescartaPacote = pDescartaPacotes;
 		this.pktsPerdidos = pktsPerdidos;
 		this.ESTADO = ESTADO;
 		byte[] data = new byte[1024];
@@ -160,10 +179,10 @@ public class DGSocket {
 		}
 		System.out.println(this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " " +"Tentarei ganhar lock de testeSendBuffer no send");
 		synchronized (this.testeSendBuffer) {
-			if (Math.abs(this.sendBase - this.nextSeqNum) >= RcvBufferSize) {
+			if (Math.abs(this.sendBase - this.nextSeqNum) >= RcvBuffer) {
 				System.out.println(this.sendBase + ", " + this.nextSeqNum);
 			}
-			while (Math.abs(this.sendBase - this.nextSeqNum) >= RcvBufferSize) {
+			while (Math.abs(this.sendBase - this.nextSeqNum) >= RcvBuffer) {
 				try {
 					System.out.println(this.sendBase + ", " + this.nextSeqNum);
 					System.out.println(this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " " +"APLICAÇÃO ESPERANDO POIS NÃO PODE COLOCAR MAIS NADA NO SEND BUFFER!");
@@ -221,30 +240,6 @@ public class DGSocket {
 			throw new PortUnreachableException("Provavelmente o end host caiu");
 		}
 		int b = 0;
-//		System.out.println("Tentarei ganhar lock no testeRcvBuffer em receive");
-//		synchronized (testeRcvBuffer) {
-//			System.out.println("Ganhei lock no testeRcvBuffer em receive");
-//			while (rcvBase == ackNum) {
-//				// pois não tem nenhum pacote ainda
-//				try {
-//					System.out.println("Estarei esperando por rcvBase != ackNum em receive");
-//					testeRcvBuffer.wait();
-//					System.out.println("Acabou a espera do testeRcvBuffer em receive");
-//				} catch (InterruptedException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//			}
-//			System.out.println("Vou tentar dar o pacote " + rcvBase + " para a aplicação");
-//			byte[] temp = testeRcvBuffer[rcvBase].getData();
-//			for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[rcvBase].getLength(); i++, j++) {
-//				data[i] =  temp[j];
-//				b++;
-//			}
-//			System.out.println("Mandei pra aplicação o pacote " + rcvBase);
-////			testeRcvBufferEstado[rcvBase] = 3;
-//			rcvBase += 1;
-//		}
 		
 		synchronized (testeRcvBuffer) {
 			System.out.println("Ganhei lock no testeRcvBuffer em receive");
@@ -351,7 +346,7 @@ public class DGSocket {
 	}
 	
 	private int circulariza(int index) {
-		return index % RcvBufferSize;
+		return index % RcvBuffer;
 	}
 	
 	private boolean podeEnviar() {
@@ -374,7 +369,7 @@ public class DGSocket {
 	}
 	
 	private int transmitidoNaoReconhecido(int end) {
-		for (int i = sendBase; i <= lastPacketSent && i < nextSeqNum && i < end && i < sendBase + RcvBufferSize; ++i) {
+		for (int i = sendBase; i <= lastPacketSent && i < nextSeqNum && i < end && i < sendBase + RcvBuffer; ++i) {
 			if (testeSendBufferEstado[circulariza(i)] == 2) {
 				return i;
 			}
@@ -674,7 +669,7 @@ public class DGSocket {
 							timeSent = System.currentTimeMillis();
 						}
 						socket.send(testeSendBuffer[circulariza(pktTimer)]);
-						if (timeOutInterval < 10000) { // duplicação do tempo de expiração
+						if (timeOutInterval < (timeOutRTT << 3) && timeOutInterval < 6000) { // duplicação do tempo de expiração
 							timeOutInterval = timeOutInterval << 1;
 						}
 						try {
@@ -763,6 +758,7 @@ public class DGSocket {
 							" bytes de carga útil" +
 							"\ndado: " + new String(data, 14, dp.getLength() - 14, "UTF-8"));
 					
+					System.out.println("pDescartaPacote: " + pDescartaPacote);
 					if (random.nextDouble() < pDescartaPacote) { // simula perda de pacotes
 						System.out.println("Perdi o datagram ehehe");
 						continue;
@@ -808,8 +804,8 @@ public class DGSocket {
 //					System.out.println("Rcvwnd que tem no pacote " + getRcvwnd(data));
 					sendWindowSize = getRcvwnd(data); // testando se isso melhora o paralelismo
 					
-//					System.out.println("Recebi o pacote " + getSeqNum(dp.getData()) + " em RecebeDados\nESTADO == " + ESTADO);
-//					System.out.println("rcvwnd que tem no pacote: " + getRcvwnd(data));
+					System.out.println("Recebi o pacote " + getSeqNum(dp.getData()) + " em RecebeDados\nESTADO == " + ESTADO);
+					System.out.println("rcvwnd que tem no pacote: " + getRcvwnd(data));
 					boolean apenasAck = false;
 					if (getAck(data) && dp.getLength() == headerLength && !getSyn(data) && !getFin(data)) {
 						apenasAck = true;
@@ -825,13 +821,6 @@ public class DGSocket {
 								for (int i = sendBase; i < getackNum(data); ++i) {
 									testeSendBufferEstado[circulariza(i)] = 3;
 								}
-//								try {
-//									msgSentTimer.cancel();
-//									msgSentTimer = new Timer();
-//								} catch (IllegalStateException e) {
-//									msgSentTimer = new Timer();
-//								}
-								
 								testeMsgSentTimerTask.cancel();
 								testeMsgSentTimerTask = new MsgSentTimeOut();
 								
@@ -1063,7 +1052,8 @@ public class DGSocket {
 												"\nack: " + getAck(data) +
 												"\nackme: " + getAckMe(data));
 										rcvLastAcked = ackNum - 1;
-										if (random.nextDouble() >= pDescartaAck) { // simula perda de acks no caminho
+										System.out.println("pDescartaPacote: " + pDescartaPacote);
+										if (random.nextDouble() >= pDescartaPacote) { // simula perda de acks no caminho
 											socket.send(ACK);
 											System.out.println("Mandei o ack " + ackNum);
 										} else {
@@ -1079,12 +1069,6 @@ public class DGSocket {
 									// lacuna detectada
 									synchronized (delayedAckTimer) {
 										if (ackTimerOn) {
-//											try {
-//												delayedAckTimer.cancel();
-//												delayedAckTimer = new Timer();
-//											} catch (IllegalStateException e) {
-//												delayedAckTimer = new Timer();
-//											}
 											testeDelayedAckTimerTask.cancel();
 											testeDelayedAckTimerTask = new DelayedAckTimeOut();
 											ackTimerOn = false;
@@ -1134,12 +1118,6 @@ public class DGSocket {
 									
 									synchronized (delayedAckTimer) {
 										if (ackTimerOn) {
-//											try {
-//												delayedAckTimer.cancel();
-//												delayedAckTimer = new Timer();
-//											} catch (IllegalStateException e) {
-//												delayedAckTimer = new Timer();
-//											}
 											testeDelayedAckTimerTask.cancel();
 											testeDelayedAckTimerTask = new DelayedAckTimeOut();
 											ackTimerOn = false;
@@ -1260,10 +1238,6 @@ public class DGSocket {
 								// < nextSeqNum é para não garantir que ele só está reenviando ack do último segmento
 								// que enviei
 								System.out.println("Recebi ack duplicado de " + getackNum(data));
-								synchronized (pktsPerdidos) {
-									++pktsPerdidos[0];
-									pktsPerdidos.notify();
-								}
 //								acksDuplicados[circulariza(getackNum(data))]++;
 								if (recuperacaoRapida) {
 									++congwin;
@@ -1271,6 +1245,10 @@ public class DGSocket {
 									++acksDuplicados;
 								}
 								if (acksDuplicados == 3) { // retransmissão rápida
+									synchronized (pktsPerdidos) {
+										++pktsPerdidos[0];
+										pktsPerdidos.notify();
+									}
 									recuperacaoRapida = true;
 									ssthresh = (short) Math.max((congwin >> 1), 1);
 									congwin = (short) (ssthresh + 3);
@@ -1285,6 +1263,7 @@ public class DGSocket {
 									testeSendBuffer[circulariza(getackNum(data))] = new DatagramPacket(newData, testeSendBuffer[circulariza(getackNum(data))].getLength(),
 											testeSendBuffer[circulariza(getackNum(data))].getAddress(), testeSendBuffer[circulariza(getackNum(data))].getPort());
 									socket.send(testeSendBuffer[circulariza(getackNum(data))]); // envia logo segmento perdido
+									timeSent = System.currentTimeMillis();
 									System.out.println("Retransmiti rapidamente o pacote " + getackNum(data) +
 											"\nCujo seqNum é " + getSeqNum(testeSendBuffer[circulariza(getackNum(data))].getData()));
 //									acksDuplicados[circulariza(getackNum(data))] = 0;
@@ -1292,6 +1271,7 @@ public class DGSocket {
 									synchronized (msgSentTimer) {
 										if (!msgTimerOn) {
 											pktTimer = getackNum(data);
+											packetSample = pktTimer;
 											timeOutInterval = timeOutRTT;
 											try {
 												timeoutTries = 0;
@@ -1428,16 +1408,16 @@ public class DGSocket {
 		}
 		
 		System.out.println("sampleRTT: " + sampleRTT);
-		if (estimatedRTT == -1) {
-			estimatedRTT = sampleRTT;
+		if (estimatedRTT[0] == -1) {
+			estimatedRTT[0] = sampleRTT;
 		}
-		estimatedRTT = (((estimatedRTT << 2) + (estimatedRTT << 1) // 7estimatedRTT/8 hehehehe
-				+ estimatedRTT) >> 3) + (sampleRTT >> 3);
-		System.out.println("estimatedRTT: " + estimatedRTT);
+		estimatedRTT[0] = (((estimatedRTT[0] << 2) + (estimatedRTT[0] << 1) // 7estimatedRTT/8 hehehehe
+				+ estimatedRTT[0]) >> 3) + (sampleRTT >> 3);
+		System.out.println("estimatedRTT: " + estimatedRTT[0]);
 		
-		devRTT = (((devRTT << 1) + devRTT) >> 2) + (Math.abs(sampleRTT - estimatedRTT) >> 2);
+		devRTT = (((devRTT << 1) + devRTT) >> 2) + (Math.abs(sampleRTT - estimatedRTT[0]) >> 2);
 		System.out.println("devRTT: " + devRTT);
 		
-		timeOutRTT = estimatedRTT + (devRTT << 2);
+		timeOutRTT = estimatedRTT[0] + (devRTT << 2);
 	}
 }
