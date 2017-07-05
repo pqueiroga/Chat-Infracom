@@ -506,7 +506,7 @@ public class ServidorConta implements Runnable {
 					BufferMethods.sendFeedBack(0, connectionSocket);
 				}
 			}
-			connectionSocket.close();
+			connectionSocket.close(false);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -517,7 +517,7 @@ public class ServidorConta implements Runnable {
 			if (connectionSocket != null) {
 				if (connectionSocket.isClosed() == false) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

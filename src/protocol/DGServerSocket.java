@@ -1,13 +1,11 @@
 package protocol;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
-import java.util.ArrayList;
 
 import utility.buffer.BufferMethods;
 
@@ -17,7 +15,6 @@ public class DGServerSocket {
 	private int ackNum;
 	private DatagramSocket socket;
 	private boolean closed;
-//	private int seqNum;
 	
 	public DGServerSocket(int port) throws SocketException {
 		this.socket = new DatagramSocket(port);
@@ -92,7 +89,7 @@ public class DGServerSocket {
 			e.printStackTrace();
 		}
 		
-		teste2.close();
+		teste2.close(false);
 		System.out.println("Enquanto fecha eu posso continuar fazendo as coisas");
 	}
 	

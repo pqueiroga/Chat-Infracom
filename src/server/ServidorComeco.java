@@ -1,8 +1,6 @@
 package server;
 
 import java.awt.Color;
-import java.io.IOException;
-import java.net.BindException;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;

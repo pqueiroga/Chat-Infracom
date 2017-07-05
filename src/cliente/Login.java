@@ -558,10 +558,8 @@ public class Login extends JFrame {
 				notBrokenFinished = true;
 				int status = mp.getValue().intValue();
 				if (status == 1) {
-					Profile p = new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
-					setVisible(false); // assim poderíamos fazer setVisible(true) qdo fechasse a janela que essa abre.
-					lblUsrInfo.setForeground(Color.GREEN);
-					lblUsrInfo.setText("Login efetuado com sucesso"); // esse daqui nunca vai ser visto
+					dispose();
+					new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
 				} else if (status == 2) {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText("Usuário já está online");

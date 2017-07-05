@@ -78,7 +78,7 @@ public class ServerAPI {
 				// recebe do servidor status do cadastro (sucesso ou falha)
 //				int codigo = inFromServer.read();
 				int codigo = BufferMethods.receiveFeedBack(connectionSocket);
-				connectionSocket.close();
+				connectionSocket.close(false);
 				return codigo;
 			} else {
 				return -1;
@@ -91,7 +91,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -222,7 +222,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -282,7 +282,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -324,7 +324,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -362,7 +362,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -410,7 +410,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -516,7 +516,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -558,7 +558,7 @@ public class ServerAPI {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close();
+						connectionSocket.close(false);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

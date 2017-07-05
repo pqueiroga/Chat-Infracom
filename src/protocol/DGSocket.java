@@ -64,8 +64,8 @@ public class DGSocket {
 	private boolean closed = false, msgTimerOn = false, ackTimerOn = false, ackMeTimerOn = false;
 	private long timeOutInterval = 1000;
 	private long timeOutRTT = 1000;
-	private long timeSent, timeAcked, sampleRTT, estimatedRTT = 0, devRTT;
-	private int packetSample;
+	private long timeSent, timeAcked, sampleRTT, estimatedRTT = -1, devRTT;
+	private int packetSample = -1;
 	
 	private Timer msgSentTimer = new Timer(true); // quero que sejam daemons e não impeçam ngm
 	private Timer delayedAckTimer = new Timer(true);
@@ -189,7 +189,7 @@ public class DGSocket {
 			System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + (lastPacketRcvd + 1)
 					+ " - (" + rcvBase + " - 1)))");
 			cabecalha(guardar, nextSeqNum, ackNum, rcvwnd, ack, syn, fin, ackMe);
-			for (int i = headerLength, j = 0; i < headerLength + length && j < data.length; i++, j++) {
+			for (int i = headerLength, j = 0; i < headerLength + length && j < data.length; ++i, ++j) {
 				guardar[i] = data[j];
 			}
 			testeSendBuffer[circulariza(this.nextSeqNum)] = new DatagramPacket(guardar, guardar.length,
@@ -274,9 +274,9 @@ public class DGSocket {
 			System.out.println("Ele tem " + (testeRcvBuffer[circulariza(rcvBase)].getLength() - 14) + 
 					" bytes de carga útil.");
 			byte[] temp = testeRcvBuffer[circulariza(rcvBase)].getData();
-			for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[circulariza(rcvBase)].getLength(); i++, j++) {
+			for (int i = 0, j = headerLength; i < length && j < testeRcvBuffer[circulariza(rcvBase)].getLength(); ++i, ++j) {
 				data[i] = temp[j];
-				b++;
+				++b;
 			}
 			System.out.println("Mandei pra aplicação o pacote " + rcvBase);
 				testeRcvBufferEstado[circulariza(rcvBase)] = false;
@@ -330,7 +330,7 @@ public class DGSocket {
 			fInputStream.close();
 		}
 		
-		teste.close();
+		teste.close(false);
 		System.out.println("Enquanto fecha eu posso continuar fazendo coisas");
 	}
 	
@@ -363,7 +363,7 @@ public class DGSocket {
 		if (congwin < 1) {
 			congwin = 1;
 		}
-		for (int i = sendBase; i < sendBase + Math.min(congwin, sendWindowSize) && i < nextSeqNum; i++) {//i < nextSeqNum && i < testeSendBufferEstado.length; i++) {
+		for (int i = sendBase; i < sendBase + Math.min(congwin, sendWindowSize) && i < nextSeqNum; ++i) {//i < nextSeqNum && i < testeSendBufferEstado.length; i++) {
 //			System.out.println("testeSendBufferEstado[circulariza(i) (" + circulariza(i) + ")]: " +testeSendBufferEstado[circulariza(i)]);
 //		for (int i = temp; i < temp + Math.min(sendWindowSize, congwin) && i < nextSeqNum; ++i) {
 			if (testeSendBufferEstado[circulariza(i)] == 1) {
@@ -404,27 +404,34 @@ public class DGSocket {
 		return lastPacketRcvd + 1;
 	}
 	
-	public void close() throws IOException {
+	public void close(boolean forcar) throws IOException {
 		if (!closed) {
-			(new Thread(new ClosesStuff())).start();
+			(new Thread(new ClosesStuff(forcar))).start();
 		} else {
 			throw new IOException("DGSocket já está fechada.");
 		}
 	}
 	
 	class ClosesStuff implements Runnable {
+		
+		private boolean forcar;
+		public ClosesStuff (boolean forcar) {
+			this.forcar = forcar;
+		}
 		public void run() {
 			int i = 0;
-			while (sendBase != nextSeqNum || rcvBase != ackNum) {
-				if (i >= 480 || portUnreachable || connectionRefused || !ESTADO.equals("ESTABLISHED"))
-					break; // esperar até 4 minutos hehehe.
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					break;
+			if (!forcar) {
+				while (sendBase != nextSeqNum || rcvBase != ackNum) {
+					if (i >= 480 || portUnreachable || connectionRefused || !ESTADO.equals("ESTABLISHED"))
+						break; // esperar até 4 minutos hehehe.
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+						break;
+					}
+					++i;
 				}
-				i++;
 			}
 			synchronized (testeRcvBuffer) {
 				testeRcvBuffer.notifyAll();
@@ -449,14 +456,9 @@ public class DGSocket {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			try {
-				ackMeTimer.cancel();
-			} catch (Exception e) {}
-			try {
-				delayedAckTimer.cancel();
-			} catch (Exception e) {
-				msgSentTimer.cancel();
-			}
+			ackMeTimer.cancel();
+			delayedAckTimer.cancel();
+			msgSentTimer.cancel();
 			closed = true;
 			try {
 				tEnvia.interrupt();
@@ -501,7 +503,7 @@ public class DGSocket {
 							System.out.println("Caught it");
 							e.printStackTrace();
 							try {
-								close();
+								close(false);
 							} catch (IOException e1) {
 								// TODO Auto-generated catch block
 								e1.printStackTrace();
@@ -526,22 +528,25 @@ public class DGSocket {
 //								System.out.println("Pacotes no ar: " + (i - 1 - (sendBase - 1)));
 								
 								synchronized (ackMeTimer) {
-//									if (ackMeTimerOn) {
-										testeAckMeTimerTask.cancel();
-										testeAckMeTimerTask = new AckMePls();
-										ackMeTimerOn = false;
-//									}
+									testeAckMeTimerTask.cancel();
+									testeAckMeTimerTask = new AckMePls();
+									ackMeTimerOn = false;
 								}
 								System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Enviei o pacote " + (lastPacketSent + 1) + "\nEle tem " + (testeSendBuffer[circulariza(lastPacketSent + 1)].getLength() -14) +
 										" bytes de carga útil");
 								socket.send(testeSendBuffer[circulariza(lastPacketSent + 1)]);
+								if (packetSample == -1) {
+									timeSent = System.currentTimeMillis();
+//									sampleRTT = -1;
+									packetSample = lastPacketSent;
+								}
 								++lastPacketSent;
 								
 								synchronized (msgSentTimer) {
 									if (!msgTimerOn) {
 										pktTimer = sendBase;
 										timeoutTries = 0;
-										timeOutInterval = 500;//= timeOutRTT;
+										timeOutInterval = timeOutRTT;
 										try {
 											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 										} catch (IllegalStateException e) {
@@ -552,12 +557,7 @@ public class DGSocket {
 										msgTimerOn = true;
 									}
 								}
-								
-								if (sampleRTT != -1) {
-									timeSent = System.currentTimeMillis();
-									sampleRTT = -1;
-									packetSample = lastPacketSent;
-								}
+
 								testeSendBufferEstado[circulariza(lastPacketSent)] = 2;
 								synchronized (delayedAckTimer) {
 									if (ackTimerOn) {
@@ -576,7 +576,7 @@ public class DGSocket {
 						e1.printStackTrace();
 						portUnreachable = true;
 						try {
-							close();
+							close(false);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -643,29 +643,23 @@ public class DGSocket {
 		public void run() {
 			try {
 				synchronized (pktsPerdidos) {
-					pktsPerdidos[0]++;
+					++pktsPerdidos[0];
 					pktsPerdidos.notify();
 				}
 				ssthresh = (short) Math.max((congwin >> 1), 1);
 				congwin = 1;
 				acksDuplicados = 0;
 				recuperacaoRapida = false;
-				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 2) || timeoutTries > 4) {
+				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 2) || timeoutTries > 30) {
 					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"end host não responde.");
 					connectionRefused = true;
-					close();
+					close(true);
 					return;
 				}
 				synchronized (msgSentTimer) {
-					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Pacote " + pktTimer + " deu timeout.");
+					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Pacote " + pktTimer + " deu timeout depois"
+							+ " de " + timeOutInterval + " ms");
 					try {
-//						try {
-//							testeMsgSentTimerTask.cancel();
-////							msgSentTimer.cancel();
-////							msgSentTimer = new Timer();
-//						} catch (IllegalStateException e) {
-//							msgSentTimer = new Timer();
-//						}
 						testeMsgSentTimerTask.cancel();
 						testeMsgSentTimerTask = new MsgSentTimeOut();
 						
@@ -676,12 +670,15 @@ public class DGSocket {
 						setRcvwnd(newData, rcvwnd);
 						testeSendBuffer[circulariza(pktTimer)] = new DatagramPacket(newData, testeSendBuffer[circulariza(pktTimer)].getLength(),
 								testeSendBuffer[circulariza(pktTimer)].getAddress(), testeSendBuffer[circulariza(pktTimer)].getPort());
+						if (pktTimer == packetSample) {
+							timeSent = System.currentTimeMillis();
+						}
 						socket.send(testeSendBuffer[circulariza(pktTimer)]);
 						if (timeOutInterval < 10000) { // duplicação do tempo de expiração
 							timeOutInterval = timeOutInterval << 1;
 						}
 						try {
-							timeoutTries++;
+							++timeoutTries;
 							msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
 						} catch (IllegalStateException e) {
 							testeMsgSentTimerTask.cancel();
@@ -692,7 +689,7 @@ public class DGSocket {
 						e.printStackTrace();
 						portUnreachable = true;
 						try {
-							close();
+							close(false);
 						} catch (IOException e1) {
 							// TODO Auto-generated catch block
 							e1.printStackTrace();
@@ -791,7 +788,6 @@ public class DGSocket {
 						DatagramPacket ACK = new DatagramPacket(ack, headerLength, remoteInetAddress, remotePort);
 						// envio imediato de um ACK
 						socket.send(ACK);
-						timeOutInterval = 500;//= timeOutRTT;
 						continue;
 					}
 					
@@ -826,7 +822,7 @@ public class DGSocket {
 									dp.getPort());
 
 							synchronized (msgSentTimer) {
-								for (int i = sendBase; i < getackNum(data); i++) {
+								for (int i = sendBase; i < getackNum(data); ++i) {
 									testeSendBufferEstado[circulariza(i)] = 3;
 								}
 //								try {
@@ -869,7 +865,7 @@ public class DGSocket {
 							remoteInetAddress = dp.getAddress();
 							socket.connect(remoteInetAddress, remotePort);
 							synchronized (msgSentTimer) {
-								for (int i = sendBase; i < getackNum(data); i++) {
+								for (int i = sendBase; i < getackNum(data); ++i) {
 									testeSendBufferEstado[circulariza(i)] = 3;
 								}
 //								try {
@@ -899,7 +895,7 @@ public class DGSocket {
 //							socket.connect(remoteInetAddress, remotePort);
 							byte[] ack = new byte[headerLength];
 							lastPacketRcvd = ackNum;
-							ackNum++;
+							++ackNum;
 							sendWindowSize = getRcvwnd(data);
 							rcvwnd = (RcvBuffer - ((lastPacketRcvd + 1) - (rcvBase - 1)));
 //							System.out.println("rcvwnd = " + "(" + RcvBuffer + " - (" + lastPacketRcvd
@@ -1010,7 +1006,7 @@ public class DGSocket {
 										socket.send(ACK);
 										rcvLastAcked = ackNum - 1;
 										System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Mandei o ack " + ackNum);
-										for (int i = 0; i < ackNum; i++) { // ack cumulativo enviado, atualizar
+										for (int i = 0; i < ackNum; ++i) { // ack cumulativo enviado, atualizar
 											// testeRcvBufferEstado[circulariza(i)] = 2;
 										}
 									} else if (rcvLastAcked == ackNum - 2) {										
@@ -1170,6 +1166,9 @@ public class DGSocket {
 										"\nrcvwnd do ack-ackme: " + getRcvwnd(data) +
 										"\nsendWindowSize pra mim agora: " + sendWindowSize);
 								if (getackNum(data) > sendBase) {
+									if (getackNum(data) > packetSample && packetSample != -1) {
+										estimaRTT();
+									}
 									System.out.println("sendBase = " + getackNum(data));
 									sendBase = getackNum(data);
 									synchronized (msgSentTimer) {
@@ -1182,7 +1181,7 @@ public class DGSocket {
 												"\nlastPacketSent: " + lastPacketSent);
 										if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 											pktTimer = peppa;
-											timeOutInterval = 500;//= timeOutRTT;
+											timeOutInterval = timeOutRTT;
 											try {
 												timeoutTries = 0;
 												msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
@@ -1198,6 +1197,9 @@ public class DGSocket {
 								testeSendBuffer.notifyAll();
 
 							} else if (getackNum(data) > sendBase) {
+								if (getackNum(data) > packetSample && packetSample != -1) {
+									estimaRTT();
+								}
 								
 								sendWindowSize = getRcvwnd(data);	
 								if (recuperacaoRapida) {
@@ -1219,19 +1221,8 @@ public class DGSocket {
 								acksDuplicados = 0;
 								
 								System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"Recebi ack " + getackNum(data));
-								if (getackNum(data) > packetSample) {
-									timeAcked = System.currentTimeMillis();
-									sampleRTT = timeAcked - timeSent;
-									if (estimatedRTT == 0) {
-										estimatedRTT = sampleRTT;
-									}
-									estimatedRTT = ((long) (estimatedRTT * 0.875)) + (sampleRTT >> 3);
-									
-									devRTT = ((long) (devRTT * 0.75)) + (Math.abs(sampleRTT - estimatedRTT) >> 2);
-									
-									timeOutRTT = estimatedRTT + (devRTT << 2);
-								}
-								for (int i = sendBase; i < getackNum(data); i++) {
+								
+								for (int i = sendBase; i < getackNum(data); ++i) {
 									testeSendBufferEstado[circulariza(i)] = 3;
 								}
 								sendBase = getackNum(data);
@@ -1244,10 +1235,11 @@ public class DGSocket {
 									msgTimerOn = false; // pq chegou e tal
 									int peppa = transmitidoNaoReconhecido(nextSeqNum);
 									System.out.println("transmitidoNaoReconhecido: " + peppa +
-											"\nlastPacketSent: " + lastPacketSent);
+											"\nlastPacketSent: " + lastPacketSent +
+											"\ntimeOutRTT: " + timeOutRTT);
 									if (peppa != -1) { // se tiver algum segmento não reconhecido, começar temporizador pra ele
 										pktTimer = peppa;
-										timeOutInterval = 500;//= timeOutRTT;
+										timeOutInterval = timeOutRTT;
 										try {
 											timeoutTries = 0;
 											msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
@@ -1269,14 +1261,14 @@ public class DGSocket {
 								// que enviei
 								System.out.println("Recebi ack duplicado de " + getackNum(data));
 								synchronized (pktsPerdidos) {
-									pktsPerdidos[0]++;
+									++pktsPerdidos[0];
 									pktsPerdidos.notify();
 								}
 //								acksDuplicados[circulariza(getackNum(data))]++;
 								if (recuperacaoRapida) {
 									++congwin;
 								} else {
-									acksDuplicados++;
+									++acksDuplicados;
 								}
 								if (acksDuplicados == 3) { // retransmissão rápida
 									recuperacaoRapida = true;
@@ -1300,7 +1292,7 @@ public class DGSocket {
 									synchronized (msgSentTimer) {
 										if (!msgTimerOn) {
 											pktTimer = getackNum(data);
-											timeOutInterval = 500;//= timeOutRTT;
+											timeOutInterval = timeOutRTT;
 											try {
 												timeoutTries = 0;
 												msgSentTimer.schedule(testeMsgSentTimerTask, timeOutInterval);
@@ -1321,7 +1313,7 @@ public class DGSocket {
 					e1.printStackTrace();
 					portUnreachable = true;
 					try {
-						close();
+						close(false);
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -1423,5 +1415,29 @@ public class DGSocket {
 		} catch (Exception e) {
 			return false;
 		}
+	}
+
+	private void estimaRTT() {
+		timeAcked = System.currentTimeMillis();
+		System.out.println("sampleRTT calculada a partir de: " + packetSample);
+		packetSample = -1;
+		sampleRTT = timeAcked - timeSent;
+		
+		if (sampleRTT < 50) {
+			sampleRTT = 50;
+		}
+		
+		System.out.println("sampleRTT: " + sampleRTT);
+		if (estimatedRTT == -1) {
+			estimatedRTT = sampleRTT;
+		}
+		estimatedRTT = (((estimatedRTT << 2) + (estimatedRTT << 1) // 7estimatedRTT/8 hehehehe
+				+ estimatedRTT) >> 3) + (sampleRTT >> 3);
+		System.out.println("estimatedRTT: " + estimatedRTT);
+		
+		devRTT = (((devRTT << 1) + devRTT) >> 2) + (Math.abs(sampleRTT - estimatedRTT) >> 2);
+		System.out.println("devRTT: " + devRTT);
+		
+		timeOutRTT = estimatedRTT + (devRTT << 2);
 	}
 }
