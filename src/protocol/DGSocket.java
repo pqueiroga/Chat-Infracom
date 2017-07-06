@@ -158,7 +158,14 @@ public class DGSocket {
 			System.out.println("Eu: " +this.socket.getLocalAddress().getHostName() +", " + this.socket.getLocalPort() + " Logo depois de receber syn + ack no construtor de " + this.remoteInetAddress.getHostName() + ", " + this.remotePort);
 			break;
 		case "SYN RECEIVED":
-			this.socket = new DatagramSocket();
+			if (port == -1) {
+				this.socket = new DatagramSocket();
+			} else {
+				this.socket = new DatagramSocket(null);
+				this.socket.setReuseAddress(true);
+				SocketAddress sockaddr = new InetSocketAddress(port);
+				this.socket.bind(sockaddr);
+			}
 			this.socket.connect(InetAddress.getByName(remoteIP), remotePort);
 			System.out.println("conectei");
 			this.ackNum = ackNum;
@@ -863,7 +870,7 @@ public class DGSocket {
 									dp.getPort());
 							remotePort = dp.getPort();
 							remoteInetAddress = dp.getAddress();
-							socket.connect(remoteInetAddress, remotePort);
+//							socket.connect(remoteInetAddress, remotePort);
 							synchronized (msgSentTimer) {
 								for (int i = sendBase; i < getackNum(data); ++i) {
 									testeSendBufferEstado[circulariza(i)] = 3;
