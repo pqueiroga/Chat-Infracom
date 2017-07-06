@@ -1,6 +1,7 @@
 package utility.server;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
@@ -122,16 +123,23 @@ public class ServerAPI {
 		DGServerSocket returnSocket = null;
 		int status = -2;
 		int portaDaSessao = 0;
+		int tries = 0;
 		try {
-			portaDaSessao = 2032;
+			portaDaSessao = 2030;
 			while (portaDaSessao < 65525) {
 				try {
 					// tenta se conectar ao servidor de operações
 					connectionSocket = new DGSocket(new int[1], portaDaSessao, this.ip, this.port);
 					break;
-				} catch (IOException e) {
+				} catch (BindException e) {
 					System.out.println(portaDaSessao + " indisponível, tentando com a próxima porta...");
 					portaDaSessao++;
+				} catch (Exception e) {
+					e.printStackTrace();
+					tries++;
+					if (tries == 2) {
+						return new AbstractMap.SimpleEntry<DGServerSocket, Integer>(null, new Integer(-3));
+					}
 				}
 			}
 			if (portaDaSessao >= 65525) {

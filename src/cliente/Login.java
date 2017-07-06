@@ -476,7 +476,10 @@ public class Login extends JFrame {
 				Map.Entry<DGServerSocket, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 				notBrokenFinished = true;
 				int status = mp.getValue().intValue();
-				if (mp.getKey() == null) {
+				if (status == -3) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Não foi possível se conectar ao servidor");
+				} else if (mp.getKey() == null) {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText("Não conseguimos porta");
 				} else if (status == 1) {

@@ -17,10 +17,12 @@ public class DGServerSocket {
 	private int ackNum;
 	private DatagramSocket socket;
 	private boolean closed;
+	private int port;
 	
 	public DGServerSocket(int port, boolean setReuseAddr) throws SocketException {
+		this.port = port;
 		this.socket = new DatagramSocket(null);
-		this.socket.setReuseAddress(setReuseAddr);
+		this.socket.setReuseAddress(true);
 		SocketAddress sockaddr = new InetSocketAddress(port);
 		this.socket.bind(sockaddr);
 	}
@@ -129,7 +131,7 @@ public class DGServerSocket {
 			
 			this.ackNum = getSeqNum(data) + 1;
 			
-			retorno2 = new DGSocket(estimatedRTT, pDescartaPacotes, pktsPerdidos, inicia.getAddress().getHostName(),
+			retorno2 = new DGSocket(estimatedRTT, pDescartaPacotes, pktsPerdidos, port, inicia.getAddress().getHostName(),
 					inicia.getPort(), "SYN RECEIVED", this.ackNum);
 			System.out.println("Vou travar esperando estado hehe");
 	
