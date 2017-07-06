@@ -27,6 +27,7 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
 import protocol.DGServerSocket;
+import protocol.DGSocket;
 import utility.server.ServerAPI;
 
 public class Login extends JFrame {
@@ -473,7 +474,7 @@ public class Login extends JFrame {
 				notBrokenFinished = false;
 				(new Thread(new naoQuebrou())).start();
 				toServer = new ServerAPI(0, new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
-				Map.Entry<DGServerSocket, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
+				Map.Entry<DGSocket, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 				notBrokenFinished = true;
 				int status = mp.getValue().intValue();
 				if (status == -3) {
@@ -485,7 +486,7 @@ public class Login extends JFrame {
 				} else if (status == 1) {
 //					dispose(); quando eu uso dispose fica um ícone fantasma na barra de tarefas
 					setVisible(false);
-					new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
+					new Profile(mp.getKey(), new DGServerSocket(mp.getKey().getPort(), true), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
 				} else if (status == 2) {
 					lblUsrInfo.setForeground(Color.RED);
 					lblUsrInfo.setText("Usuário já está online");

@@ -30,6 +30,7 @@ public class ServidorConta implements Runnable {
 	
 	@Override
 	public void run() {
+		while (true) {
 		try {
 			int operacao = BufferMethods.receiveInt(connectionSocket);
 			byte[] buffer = new byte[256];
@@ -465,23 +466,24 @@ public class ServidorConta implements Runnable {
 					BufferMethods.sendFeedBack(0, connectionSocket);
 				}
 			}
-			connectionSocket.close(false);
+			connectionSocket.close(true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchAlgorithmException e) {
 			// nunca deveria dar isto... pls.
 			e.printStackTrace();
-		} finally {
-			if (connectionSocket != null) {
-				if (connectionSocket.isClosed() == false) {
-					try {
-						connectionSocket.close(false);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-			}
+		} //finally {
+//			if (connectionSocket != null) {
+//				if (connectionSocket.isClosed() == false) {
+//					try {
+//						connectionSocket.close(true);
+//					} catch (IOException e) {
+//						e.printStackTrace();
+//					}
+//				}
+//			}
+//		}
 		}
 	}
 	

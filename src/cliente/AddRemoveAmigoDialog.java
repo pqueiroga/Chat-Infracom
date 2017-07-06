@@ -15,6 +15,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
+import protocol.DGSocket;
 import utility.server.ServerAPI;
 
 import java.awt.Color;
@@ -36,7 +37,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 	private final JPanel contentPanel = new JPanel();
 	private JTextField textFieldFriend;
 	
-	public AddRemoveAmigoDialog(int[] pktsPerdidos, String username, String ip, int port) {
+	public AddRemoveAmigoDialog(DGSocket serverConnectionSocket, int[] pktsPerdidos, String username, String ip, int port) {
 		ServerAPI toServer = new ServerAPI(0, pktsPerdidos, ip, port);
 		int randomNum = ThreadLocalRandom.current().nextInt(3, 9 + 1);
 		Color cor;
@@ -198,7 +199,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 						try {
 							String usrOk = Login.validaUsr(textFieldFriend.getText());
 							if (usrOk.isEmpty()) {
-								int status = toServer.solicitaAmizade(username, textFieldFriend.getText());
+								int status = toServer.solicitaAmizade(serverConnectionSocket, username, textFieldFriend.getText());
 								if (status == -1) {
 									lblInfo.setForeground(Color.RED);
 									lblInfo.setText("Servidor não conseguiu se conectar ao banco de dados");
@@ -244,7 +245,7 @@ public class AddRemoveAmigoDialog extends JDialog {
 									JOptionPane.PLAIN_MESSAGE, null, opcoes, opcoes[0]);
 							if (yesno == JOptionPane.YES_OPTION) {
 								try {
-									int status = toServer.removerAmigo(username, textFieldFriend.getText());
+									int status = toServer.removerAmigo(serverConnectionSocket, username, textFieldFriend.getText());
 									if (status == -1) {
 										lblInfo.setForeground(Color.RED);
 										lblInfo.setText("Servidor não conseguiu se conectar ao banco de dados");

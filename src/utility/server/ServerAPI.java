@@ -117,15 +117,15 @@ public class ServerAPI {
 	 * @throws UnknownHostException
 	 * @throws IOException
 	 */
-	public Map.Entry<DGServerSocket, Integer> login(String username, String password)
+	public Map.Entry<DGSocket, Integer> login(String username, String password)
 			throws GeneralSecurityException, IOException {
 		DGSocket connectionSocket = null;
 		DGServerSocket returnSocket = null;
 		int status = -2;
 		int portaDaSessao = 0;
 		int tries = 0;
-		try {
-			portaDaSessao = 2030;
+//		try {
+			portaDaSessao = 2032;
 			while (portaDaSessao < 65525) {
 				try {
 					// tenta se conectar ao servidor de operações
@@ -138,12 +138,12 @@ public class ServerAPI {
 					e.printStackTrace();
 					tries++;
 					if (tries == 2) {
-						return new AbstractMap.SimpleEntry<DGServerSocket, Integer>(null, new Integer(-3));
+						return new AbstractMap.SimpleEntry<DGSocket, Integer>(null, new Integer(-3));
 					}
 				}
 			}
 			if (portaDaSessao >= 65525) {
-				return new AbstractMap.SimpleEntry<DGServerSocket, Integer>(null, new Integer(-1));
+				return new AbstractMap.SimpleEntry<DGSocket, Integer>(null, new Integer(-1));
 			}
 			
 			System.out.println("Consegui uma connectionsocket pra falar com o server");
@@ -178,30 +178,30 @@ public class ServerAPI {
 				// e dar essa porta pro servidor constatar que estamos online e podemos receber por essa porta.
 				
 			}	
-		} finally {
-			if (connectionSocket != null) {
-				if (!connectionSocket.isClosed()) {
-					try {
-						connectionSocket.close(true);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-					try{
-						returnSocket = new DGServerSocket(portaDaSessao, true);
-						// pro nat tem que ser reuse address
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		}
-		return new AbstractMap.SimpleEntry<DGServerSocket, Integer>(returnSocket, new Integer(status));
+//		} //finally {
+//			if (connectionSocket != null) {
+//				if (!connectionSocket.isClosed()) {
+//					try {
+//						connectionSocket.close(true);
+//					} catch (Exception e) {
+//						e.printStackTrace();
+//					}
+//					try {
+//						Thread.sleep(1000);
+//					} catch (InterruptedException e1) {
+//						// TODO Auto-generated catch block
+//						e1.printStackTrace();
+//					}
+//					try{
+//						returnSocket = new DGServerSocket(portaDaSessao, true);
+//						// pro nat tem que ser reuse address
+//					} catch (IOException e) {
+//						e.printStackTrace();
+//					}
+//				}
+//			}
+//		}
+		return new AbstractMap.SimpleEntry<DGSocket, Integer>(connectionSocket, new Integer(status));
 	}
 	
 	/**
@@ -217,13 +217,13 @@ public class ServerAPI {
 	 * @throws UnknownHostException
 	 * @throws IOException
 	 */
-	public int login(String username, int chatPort)
+	public int login(DGSocket connectionSocket, String username)
 			throws GeneralSecurityException, IOException {
-		DGSocket connectionSocket = null;
+//		DGSocket connectionSocket = null;
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, chatPort, this.ip, this.port);
+//			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, chatPort, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			// cadastro(0), login(1)		
@@ -270,11 +270,11 @@ public class ServerAPI {
 	 * @return verdadeiro se conseguiu tirar, falso cc.
 	 * @throws IOException 
 	 */
-	public boolean logout(String username) throws IOException {
-		DGSocket connectionSocket = null;
+	public boolean logout(DGSocket connectionSocket, String username) throws IOException {
+//		DGSocket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+//			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -355,10 +355,10 @@ public class ServerAPI {
 	 * 2 quer dizer que já existe uma relação para esses usuários ou que algum dos dois usuários não existe!<br>
 	 * @throws IOException 
 	 */
-	public int solicitaAmizade(String user, String friend) throws IOException {
-		DGSocket connectionSocket = null;
+	public int solicitaAmizade(DGSocket connectionSocket, String user, String friend) throws IOException {
+//		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+//			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -401,8 +401,8 @@ public class ServerAPI {
 	 * 1 quer dizer OK!<br>
 	 * @throws IOException 
 	 */
-	public int aceitarAmizade(String user, String friend) throws IOException {
-		return aceitaRecusaAmizade(user, friend, 5);
+	public int aceitarAmizade(DGSocket connectionSocket, String user, String friend) throws IOException {
+		return aceitaRecusaAmizade(connectionSocket, user, friend, 5);
 	}
 	
 	/**
@@ -415,8 +415,8 @@ public class ServerAPI {
 	 * 1 quer dizer operação OK!<br>
 	 * @throws IOException 
 	 */
-	public int recusarAmizade(String user, String friend) throws IOException {
-		return aceitaRecusaAmizade(user, friend, 6);
+	public int recusarAmizade(DGSocket connectionSocket, String user, String friend) throws IOException {
+		return aceitaRecusaAmizade(connectionSocket, user, friend, 6);
 	}
 	
 	/**
@@ -429,8 +429,8 @@ public class ServerAPI {
 	 * 1 quer dizer operação OK!<br>
 	 * @throws IOException
 	 */
-	public int removerAmigo(String user, String friend) throws IOException {
-		return aceitaRecusaAmizade(user, friend, 7);
+	public int removerAmigo(DGSocket connectionSocket, String user, String friend) throws IOException {
+		return aceitaRecusaAmizade(connectionSocket,user, friend, 7);
 	}
 	
 	/**
@@ -439,8 +439,8 @@ public class ServerAPI {
 	 * @return lista de amigos online, <username> (<ip>, <port>)
 	 * @throws IOException
 	 */
-	public ArrayList<String> pegaAmigosOnlines(int port, String user) throws IOException {
-		return listaSolicitacaoAmigos(port, user, 8);
+	public ArrayList<String> pegaAmigosOnlines(DGSocket connectionSocket, String user) throws IOException {
+		return listaSolicitacaoAmigos(connectionSocket, user, 8);
 	}
 	
 	/**
@@ -449,12 +449,12 @@ public class ServerAPI {
 	 * @return lista de solicitacoes pendentes: cada elemento é um username
 	 * @throws IOException
 	 */
-	public ArrayList<String> pegaSolicitacoesPendentes(int port, String user) throws IOException {
-		return listaSolicitacaoAmigos(port, user, 9);
+	public ArrayList<String> pegaSolicitacoesPendentes(DGSocket connectionSocket, String user) throws IOException {
+		return listaSolicitacaoAmigos(connectionSocket, user, 9);
 	}
 	
-	public ArrayList<String> pegaAmigos(int port, String user) throws IOException {
-		return listaSolicitacaoAmigos(port, user, 10);
+	public ArrayList<String> pegaAmigos(DGSocket connectionSocket, String user) throws IOException {
+		return listaSolicitacaoAmigos(connectionSocket, user, 10);
 	}
 	
 	/**
@@ -462,11 +462,11 @@ public class ServerAPI {
 	 * @return
 	 * @throws IOException
 	 */
-	private ArrayList<String> listaSolicitacaoAmigos(int port, String user, int op) throws IOException {
+	private ArrayList<String> listaSolicitacaoAmigos(DGSocket connectionSocket, String user, int op) throws IOException {
 		ArrayList<String> retorno = new ArrayList<String>();
-		DGSocket connectionSocket = null;
+//		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, port, this.ip, this.port);
+//			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, port, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -504,10 +504,10 @@ public class ServerAPI {
 	 * @return
 	 * @throws IOException
 	 */
-	private int aceitaRecusaAmizade(String user, String friend, int op) throws IOException {
-		DGSocket connectionSocket = null;
+	private int aceitaRecusaAmizade(DGSocket connectionSocket, String user, String friend, int op) throws IOException {
+//		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+//			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			

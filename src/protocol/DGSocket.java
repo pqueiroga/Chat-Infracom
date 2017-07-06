@@ -62,8 +62,8 @@ public class DGSocket {
 	private DatagramSocket socket;
 	private int pktTimer, ackTimer; // diz qual pacote/ack está associado ao timer
 	private boolean closed = false, msgTimerOn = false, ackTimerOn = false, ackMeTimerOn = false;
-	private long timeOutInterval = 1000;
-	private long timeOutRTT = 1000;
+	private long timeOutInterval = 10000;
+	private long timeOutRTT = 10000;
 	private long timeSent, timeAcked, sampleRTT, devRTT;
 	private long[] estimatedRTT = {-1};
 	private int packetSample = -1;
@@ -687,7 +687,7 @@ public class DGSocket {
 							timeSent = System.currentTimeMillis();
 						}
 						socket.send(testeSendBuffer[circulariza(pktTimer)]);
-						if (timeOutInterval < (timeOutRTT << 3) && timeOutInterval < 6000) { // duplicação do tempo de expiração
+						if (timeOutInterval < (timeOutRTT << 3) && timeOutInterval < 20000) { // duplicação do tempo de expiração
 							timeOutInterval = timeOutInterval << 1;
 						}
 						try {

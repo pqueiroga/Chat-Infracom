@@ -60,6 +60,7 @@ public class Profile extends JFrame implements ChangeListener {
 	private int port;
 	private String username;
 	private DGServerSocket listenSocket;
+	private DGSocket serverConnectionSocket;
 	private JLabel lblConectividadeComServidor;
 	private JButton btnAddRemoveFriend;
 	private JLabel lblPacotesPerdidos;
@@ -78,7 +79,7 @@ public class Profile extends JFrame implements ChangeListener {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					Profile frame = new Profile(null, "QQQQQQQQQQQQQQQQQQQ", "localhost", 2020);
+					Profile frame = new Profile(null, null, "QQQQQQQQQQQQQQQQQQQ", "localhost", 2020);
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -86,7 +87,7 @@ public class Profile extends JFrame implements ChangeListener {
 			}
 		});
 	}
-	public Profile(DGServerSocket listenSocket, String username, String ip, int port) {
+	public Profile(DGSocket serverConnectionSocket, DGServerSocket listenSocket, String username, String ip, int port) {
 		setResizable(false);
 		setTitle(username);
 		this.chats = new ConcurrentHashMap<String, Chat>();
@@ -96,10 +97,11 @@ public class Profile extends JFrame implements ChangeListener {
 		this.port = port;
 		this.noServer = false;
 		this.frame = this;
-		this.addRemoveAmigo = new AddRemoveAmigoDialog(pktsPerdidos, username, ip, port);
+		this.addRemoveAmigo = new AddRemoveAmigoDialog(serverConnectionSocket, pktsPerdidos, username, ip, port);
 		this.addRemoveAmigo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		this.contatandoServStr = "Tentando contatar servidor";
 		ServerAPI toServer = new ServerAPI(pDescartaPacotes, pktsPerdidos, ip, port);
+		this.serverConnectionSocket = serverConnectionSocket;
 		
 		this.amigos = new ArrayList<String>();
 		
@@ -273,7 +275,7 @@ public class Profile extends JFrame implements ChangeListener {
 			public void windowClosing(WindowEvent arg0) {
 				if (!noServer) {
 					try {
-						toServer.logout(username);
+						toServer.logout(serverConnectionSocket, username);
 					} catch (IOException e) {
 						System.out.println("Não foi possível deslogar");
 					}
@@ -332,13 +334,13 @@ public class Profile extends JFrame implements ChangeListener {
 			while (true) {
 		    	ServerAPI toServerConc = new ServerAPI(pDescartaPacotes, pktsPerdidos, ip, port);
 		    	try {
-					ArrayList<String> pendentes = toServerConc.pegaSolicitacoesPendentes(listenSocket.getLocalPort(), username);
+					ArrayList<String> pendentes = toServerConc.pegaSolicitacoesPendentes(serverConnectionSocket, username);
 					if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
 						try {
-							int loginstatus = toServerConc.login(username, listenSocket.getLocalPort());
+							int loginstatus = toServerConc.login(serverConnectionSocket, username);
 							if (loginstatus == 2) {
-								toServerConc.logout(username);
-								toServerConc.login(username, listenSocket.getLocalPort());
+								toServerConc.logout(serverConnectionSocket, username);
+								toServerConc.login(serverConnectionSocket, username);
 								lblConectividadeComServidor.setForeground(Color.GREEN);
 								lblConectividadeComServidor.setText("Servidor OK");
 								btnAddRemoveFriend.setEnabled(true);
@@ -356,7 +358,7 @@ public class Profile extends JFrame implements ChangeListener {
 								JOptionPane.PLAIN_MESSAGE, null, opcoes, opcoes[0]);
 						if (yesno == JOptionPane.YES_OPTION) {
 							try {
-								int status = toServerConc.aceitarAmizade(username, str);
+								int status = toServerConc.aceitarAmizade(serverConnectionSocket, username, str);
 								if (status == -1) { // erro no BD
 								    JOptionPane.showMessageDialog(frame, "Não foi possível acessar o banco de dados", "Erro",
 								            JOptionPane.WARNING_MESSAGE);
@@ -373,7 +375,7 @@ public class Profile extends JFrame implements ChangeListener {
 							}
 						} else { 
 							try {
-								int status = toServerConc.recusarAmizade(username, str);
+								int status = toServerConc.recusarAmizade(serverConnectionSocket, username, str);
 								if (status == -1) { // erro no BD
 								    JOptionPane.showMessageDialog(frame, "Não foi possível acessar o banco de dados", "Erro",
 								            JOptionPane.WARNING_MESSAGE);
@@ -403,16 +405,16 @@ public class Profile extends JFrame implements ChangeListener {
 				}
 				try {
 					amigos.clear();
-					ArrayList<String> temp = toServerConc.pegaAmigos(listenSocket.getLocalPort(), username);
+					ArrayList<String> temp = toServerConc.pegaAmigos(serverConnectionSocket, username);
 					for (String gambiarra : temp) {
 						amigos.add(gambiarra);
 					}
 					if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
 						try {
-							int loginstatus = toServerConc.login(username, listenSocket.getLocalPort());
+							int loginstatus = toServerConc.login(serverConnectionSocket, username);
 							if (loginstatus == 2) {
-								toServerConc.logout(username);
-								toServerConc.login(username, listenSocket.getLocalPort());
+								toServerConc.logout(serverConnectionSocket, username);
+								toServerConc.login(serverConnectionSocket, username);
 								lblConectividadeComServidor.setForeground(Color.GREEN);
 								lblConectividadeComServidor.setText("Servidor OK");
 								btnAddRemoveFriend.setEnabled(true);
