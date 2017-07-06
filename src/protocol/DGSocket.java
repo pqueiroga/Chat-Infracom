@@ -7,7 +7,9 @@ import java.net.ConnectException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.PortUnreachableException;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.Random;
 import java.util.Timer;
@@ -129,8 +131,10 @@ public class DGSocket {
 			if (port == -1) {
 				this.socket = new DatagramSocket();
 			} else {
-				this.socket = new DatagramSocket(port);
+				this.socket = new DatagramSocket(null);
 				this.socket.setReuseAddress(true);
+				SocketAddress sockaddr = new InetSocketAddress(port);
+				this.socket.bind(sockaddr);
 			}
 			this.remotePort = remotePort;
 			this.remoteInetAddress = InetAddress.getByName(remoteIP);
@@ -651,7 +655,7 @@ public class DGSocket {
 				congwin = 1;
 				acksDuplicados = 0;
 				recuperacaoRapida = false;
-				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 2) || timeoutTries > 30) {
+				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 2) || timeoutTries > 5) {
 					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"end host não responde.");
 					connectionRefused = true;
 					close(true);

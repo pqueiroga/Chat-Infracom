@@ -123,7 +123,7 @@ public class ServerAPI {
 		int status = -2;
 		int portaDaSessao = 0;
 		try {
-			portaDaSessao = 2031;
+			portaDaSessao = 2032;
 			while (portaDaSessao < 65525) {
 				try {
 					// tenta se conectar ao servidor de operações
@@ -431,8 +431,8 @@ public class ServerAPI {
 	 * @return lista de amigos online, <username> (<ip>, <port>)
 	 * @throws IOException
 	 */
-	public ArrayList<String> pegaAmigosOnlines(String user) throws IOException {
-		return listaSolicitacaoAmigos(user, 8);
+	public ArrayList<String> pegaAmigosOnlines(int port, String user) throws IOException {
+		return listaSolicitacaoAmigos(port, user, 8);
 	}
 	
 	/**
@@ -441,12 +441,12 @@ public class ServerAPI {
 	 * @return lista de solicitacoes pendentes: cada elemento é um username
 	 * @throws IOException
 	 */
-	public ArrayList<String> pegaSolicitacoesPendentes(String user) throws IOException {
-		return listaSolicitacaoAmigos(user, 9);
+	public ArrayList<String> pegaSolicitacoesPendentes(int port, String user) throws IOException {
+		return listaSolicitacaoAmigos(port, user, 9);
 	}
 	
-	public ArrayList<String> pegaAmigos(String user) throws IOException {
-		return listaSolicitacaoAmigos(user, 10);
+	public ArrayList<String> pegaAmigos(int port, String user) throws IOException {
+		return listaSolicitacaoAmigos(port, user, 10);
 	}
 	
 	/**
@@ -454,11 +454,11 @@ public class ServerAPI {
 	 * @return
 	 * @throws IOException
 	 */
-	private ArrayList<String> listaSolicitacaoAmigos(String user, int op) throws IOException {
+	private ArrayList<String> listaSolicitacaoAmigos(int port, String user, int op) throws IOException {
 		ArrayList<String> retorno = new ArrayList<String>();
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, port, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			

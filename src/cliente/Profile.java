@@ -332,7 +332,7 @@ public class Profile extends JFrame implements ChangeListener {
 			while (true) {
 		    	ServerAPI toServerConc = new ServerAPI(pDescartaPacotes, pktsPerdidos, ip, port);
 		    	try {
-					ArrayList<String> pendentes = toServerConc.pegaSolicitacoesPendentes(username);
+					ArrayList<String> pendentes = toServerConc.pegaSolicitacoesPendentes(listenSocket.getLocalPort(), username);
 					if (lblConectividadeComServidor.getText().equals(contatandoServStr)) {
 						try {
 							int loginstatus = toServerConc.login(username, listenSocket.getLocalPort());
@@ -403,7 +403,7 @@ public class Profile extends JFrame implements ChangeListener {
 				}
 				try {
 					amigos.clear();
-					ArrayList<String> temp = toServerConc.pegaAmigos(username);
+					ArrayList<String> temp = toServerConc.pegaAmigos(listenSocket.getLocalPort(), username);
 					for (String gambiarra : temp) {
 						amigos.add(gambiarra);
 					}

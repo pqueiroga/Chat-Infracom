@@ -5,6 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.SocketException;
 
 import utility.buffer.BufferMethods;
@@ -17,8 +19,10 @@ public class DGServerSocket {
 	private boolean closed;
 	
 	public DGServerSocket(int port, boolean setReuseAddr) throws SocketException {
-		this.socket = new DatagramSocket(port);
+		this.socket = new DatagramSocket(null);
 		this.socket.setReuseAddress(setReuseAddr);
+		SocketAddress sockaddr = new InetSocketAddress(port);
+		this.socket.bind(sockaddr);
 	}
 	
 	public static void main(String[] args) throws Exception {
