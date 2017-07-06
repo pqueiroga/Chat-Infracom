@@ -148,7 +148,7 @@ public class Chat extends JFrame {
 		this.msgStatusSocket = msgStatusSocketConstrutor;
 		
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		setBounds(100, 100, 450, 647); //549, 537);
+		setBounds(100, 100, 450, 647);
 		this.contentPane = new JPanel();
 		int randomNum = ThreadLocalRandom.current().nextInt(1, 9 + 1);
 		Color cor;
