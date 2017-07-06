@@ -138,6 +138,7 @@ public class DGSocket {
 			}
 			this.remotePort = remotePort;
 			this.remoteInetAddress = InetAddress.getByName(remoteIP);
+			this.socket.connect(remoteInetAddress, remotePort);
 
 			tRecebe = new Thread(new RecebeDados());
 			tEnvia = new Thread(new EnviaDados());
