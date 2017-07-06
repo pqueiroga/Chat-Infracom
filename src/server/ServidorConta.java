@@ -31,28 +31,14 @@ public class ServidorConta implements Runnable {
 	@Override
 	public void run() {
 		try {
-//			OutputStream outToClient = connectionSocket.getOutputStream();
-//			InputStream inFromClient = connectionSocket.getInputStream();
-			
-			// recebe operacao, sempre dois dígitos pra transformar num int.
-//			byte[] opByte = new byte[2];
-//			connectionSocket.receive(opByte, 2);
-//			int operacao = inFromClient.read();
-//			int operacao = Integer.parseInt(BufferMethods.byteArraytoString(opByte, 2));
 			int operacao = BufferMethods.receiveInt(connectionSocket);
 			byte[] buffer = new byte[256];
-//			byte[] intByte = new byte[5];
-			// simular os write(1) e write(0) que diz ok ou não ok e códigos de erro
-			// que sempre tem apenas um dígito.
-//			byte[] feedBackByte = new byte[1];
+
 			
 			if (operacao == 11) { // login automatico
 				BancoAmizade banco = new BancoAmizade();
 				banco.conectar();
 				if (banco.conectado()) {
-//					outToClient.write(1);
-//					feedBackByte[0] = 1;
-//					connectionSocket.send(feedBackByte, 1);
 					BufferMethods.sendFeedBack(1, connectionSocket);
 					String username = BufferMethods.readString(connectionSocket);
 					if (banco.usuarioExiste(username)) {
@@ -63,26 +49,17 @@ public class ServidorConta implements Runnable {
 						}
 						if (usrOn != -1) {
 							System.out.println("Usuario já está online");
-//							outToClient.write(2);
-//							feedBackByte[0] = 2;
-//							connectionSocket.send(feedBackByte, 1);
 							BufferMethods.sendFeedBack(2, connectionSocket);
 						} else {
-//							outToClient.write(1);
-//							feedBackByte[0] = 1;
-//							connectionSocket.send(feedBackByte, 1);
 							BufferMethods.sendFeedBack(1, connectionSocket);
 							
 							// lê o número de porta
-//							inFromClient.read(buffer, 0, 5);
-//							connectionSocket.receive(buffer, 5);
-//							int port = Integer.parseInt(BufferMethods.byteArraytoString(buffer, 5));
-							int port = BufferMethods.receiveInt(connectionSocket);
+//							int port = BufferMethods.receiveInt(connectionSocket);
 							System.out.println("Indo inserir na lista");
 							synchronized (listaDeUsuarios) {
 								listaDeUsuarios.add( username + " ("
 										+ connectionSocket.getInetAddress().getHostAddress() + ", "
-										+ port + ")");
+										+ connectionSocket.getPort() + ")");
 								listaDeUsuarios.sort(String::compareToIgnoreCase);
 								listaDeUsuarios.notify();
 							}
@@ -92,15 +69,9 @@ public class ServidorConta implements Runnable {
 							}
 						}
 					} else {
-//						outToClient.write(0);
-//						feedBackByte[0] = 0;
-//						connectionSocket.send(feedBackByte, 1);
 						BufferMethods.sendFeedBack(0, connectionSocket);
 					}
 				} else {
-//					outToClient.write(0);
-//					feedBackByte[0] = 0;
-//					connectionSocket.send(feedBackByte, 1);
 					BufferMethods.sendFeedBack(0, connectionSocket);
 				}
 			} else if (operacao == 10) { // lista amigos (inclusive offline)
@@ -110,9 +81,6 @@ public class ServidorConta implements Runnable {
 				if (banco.conectado()) {
 					ArrayList<String> flOnline = new ArrayList<String>();
 					ArrayList<String> flOffline = new ArrayList<String>();
-//					outToClient.write(1);
-//					feedBackByte[0] = 1;
-//					connectionSocket.send(feedBackByte, 1);
 					BufferMethods.sendFeedBack(1, connectionSocket);
 					
 					String username = BufferMethods.readString(connectionSocket);
@@ -138,12 +106,7 @@ public class ServidorConta implements Runnable {
 							}
 							j++;
 						}
-//						while (j < fl.size()) {
-//							flOnlineOffline.add(fl.get(j)); // adiciona os offlines à lista tb
-//							j++;
-//						}
 					}
-//					outToClient.write(flOnline.size() + flOffline.size());
 					
 					BufferMethods.sendInt(flOnline.size() + flOffline.size(), connectionSocket);
 					for (String str : flOnline) {
@@ -156,7 +119,6 @@ public class ServidorConta implements Runnable {
 						timer.put(username, new Long(System.currentTimeMillis()));						
 					}
 				} else {
-//					outToClient.write(0);
 					BufferMethods.sendFeedBack(0, connectionSocket);
 				}
 			} else if (operacao == 9) { // lista solicitações pendentes
@@ -164,12 +126,10 @@ public class ServidorConta implements Runnable {
 				BancoAmizade banco = new BancoAmizade();
 				banco.conectar();
 				if (banco.conectado()) {
-//					outToClient.write(1);
 					BufferMethods.sendFeedBack(1, connectionSocket);
 					String username = BufferMethods.readString(connectionSocket);
 					ArrayList<String> solpen = banco.pedidosPendentes(username);
 					banco.desconectar();
-//					outToClient.write(solpen.size());
 					BufferMethods.sendInt(solpen.size(), connectionSocket);
 					for (String str : solpen) {
 						BufferMethods.writeString(str, connectionSocket);
@@ -178,7 +138,6 @@ public class ServidorConta implements Runnable {
 						timer.put(username, new Long(System.currentTimeMillis()));						
 					}
 				} else {
-//					outToClient.write(0);
 					BufferMethods.sendFeedBack(0, connectionSocket);
 				}
 			} if (operacao == 8) { // lista amigos online
@@ -414,27 +373,27 @@ public class ServidorConta implements Runnable {
 							BufferMethods.sendFeedBack(1, connectionSocket);
 							// descobre se o cliente conseguiu um servidor
 //							int servOK = inFromClient.read();
-							int servOK = BufferMethods.receiveFeedBack(connectionSocket);
-							if (servOK == 1) {
+//							int servOK = BufferMethods.receiveFeedBack(connectionSocket);
+//							if (servOK == 1) {
 								
 								// lê o número de porta
 //								inFromClient.read(buffer, 0, 5);
 //								int port = Integer.parseInt(BufferMethods.byteArraytoString(buffer, 5));
-								int port = BufferMethods.receiveInt(connectionSocket);
+//								int port = BufferMethods.receiveInt(connectionSocket);
 								
 								synchronized (listaDeUsuarios) {
-									listaDeUsuarios.add( username + " ("
+									listaDeUsuarios.add(username + " ("
 											+ connectionSocket.getInetAddress().getHostAddress() + ", "
-											+ port + ")");
+											+ connectionSocket.getPort() + ")");
 									listaDeUsuarios.sort(String::compareToIgnoreCase);
 									listaDeUsuarios.notify();
 								}
 								synchronized (timer) {
 									timer.put(username, new Long(System.currentTimeMillis()));						
 								}
-							} else {
-								System.out.println("o cara n conseguiu achar porta pro servidor lol");
-							}
+//							} else {
+//								System.out.println("o cara n conseguiu achar porta pro servidor lol");
+//							}
 						}
 					} else {
 						System.out.println("Usuário ou senha incorretos");
@@ -502,7 +461,7 @@ public class ServidorConta implements Runnable {
 					}
 					banco.desconectar();
 				} else {
-//					outToClient.write(0); // não conseguiu se conectar ao BD.
+					// não conseguiu se conectar ao BD.
 					BufferMethods.sendFeedBack(0, connectionSocket);
 				}
 			}

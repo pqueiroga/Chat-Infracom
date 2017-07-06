@@ -90,8 +90,13 @@ public class DGSocket {
 	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
 		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
 	}	
+	
 	public DGSocket(double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
 		this(null, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
+	}
+	
+	public DGSocket(double pDescartaPacotes, int[] pktsPerdidos, int port, String remoteIP, int remotePort) throws IOException {
+		this(null, pDescartaPacotes, pktsPerdidos, port, remoteIP, remotePort, "CLOSED", 0);
 	}
 	public DGSocket(int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
 		this(pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
@@ -125,6 +130,7 @@ public class DGSocket {
 				this.socket = new DatagramSocket();
 			} else {
 				this.socket = new DatagramSocket(port);
+				this.socket.setReuseAddress(true);
 			}
 			this.remotePort = remotePort;
 			this.remoteInetAddress = InetAddress.getByName(remoteIP);

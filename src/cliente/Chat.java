@@ -50,7 +50,6 @@ import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import protocol.DGServerSocket;
 import protocol.DGSocket;
 import utility.buffer.BufferMethods;
 
@@ -75,11 +74,11 @@ public class Chat extends JFrame {
 	private Thread msgrcv;
 	private JLabel lblMsgInfo;
 	private int[] pktsPerdidos; // ponteiro importante
-	private ArrayList<DGServerSocket> SSList;
 	
 	private ConcurrentHashMap<String, DownloadPainel> downloads;
 	
-	private int friendUploadPort;
+	private int friendPort;
+	private String friendIP;
 	
 	private String meUserName;
 	
@@ -106,7 +105,7 @@ public class Chat extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					new Chat("eu", "ele", 0, null, null, null, null, null, 0, true); //new Socket("localhost", 2030));
+					new Chat("eu", "ele", null, null, null, null, 0, true); //new Socket("localhost", 2030));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -114,9 +113,9 @@ public class Chat extends JFrame {
 		});
 	}
 	
-	public Chat(String usr, String friend, int friendUploadPort, DGSocket friendSocketConstrutor,
-			DGSocket msgStatusSocketConstrutor, ArrayList<DGServerSocket> SSList,
-			ArrayList<String> amigos, int[] pktsPerdidos, double pDescartaPacotes, boolean initVisible) throws IOException {
+	public Chat(String usr, String friend, DGSocket friendSocketConstrutor,
+			DGSocket msgStatusSocketConstrutor,	ArrayList<String> amigos,
+			int[] pktsPerdidos, double pDescartaPacotes, boolean initVisible) {
 		setResizable(false);
 		
 		this.downloads = new ConcurrentHashMap<String, DownloadPainel>();
@@ -128,9 +127,17 @@ public class Chat extends JFrame {
 		this.amigos = amigos;
 		this.meUserName = usr;
 		
-		this.friendUploadPort = friendUploadPort;
-
-		this.SSList = SSList;
+		String[] firstfetch = fetchFriendInfo();
+		if (firstfetch != null) {
+			try {
+				this.friendPort = Integer.parseInt(firstfetch[2]);
+			} catch (NumberFormatException e) {
+				System.err.println("não foi possível pegar a porta no firstfetch");
+				e.printStackTrace();
+			}
+			friendIP = firstfetch[1];
+		}
+		
 		this.pktsPerdidos = pktsPerdidos;
 		this.servicoStatusMsgOk = true;
 		this.dateFormat = new SimpleDateFormat("HH:mm:ss");
@@ -292,33 +299,6 @@ public class Chat extends JFrame {
 		
 		txtTypeYourMessage.setEnabled(true);
 		txtTypeYourMessage.setEditable(true);
-//		File teste = new File("ablablabsldiaodasidoasibdoaiedaoisjd");
-//		DownloadPainel downloadInfo = new DownloadPainel(teste, new JProgressBar(), new JButton("Abrir"));
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar(), new JButton("Abrir"));
-//		downloadPanel.add(downloadInfo);
-		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
-//		downloadPanel.add(downloadInfo);
-//		
-//		downloadInfo = new DownloadPainel(teste, new JProgressBar());
-//		downloadPanel.add(downloadInfo);
 		
 		this.txtTypeYourMessage.addKeyListener(new KeyAdapter() {
 
@@ -421,8 +401,8 @@ public class Chat extends JFrame {
 			}
         	try {
         		dgsUploader = new DGSocket(estimatedRTT, pDescartaPacotes, Chat.this.pktsPerdidos,
-        				friendSocket.getInetAddress().getHostName(),
-        				friendUploadPort);
+        				friendIP,
+        				friendPort);
         	} catch (Exception e) {
         		if (fInputStream != null) {
         			try {
@@ -435,14 +415,17 @@ public class Chat extends JFrame {
         		e.printStackTrace();
 				JOptionPane.showMessageDialog(Chat.this,
 						"Erro tentando se conectar a (" +
-						friendSocket.getInetAddress().getHostName() + ", " +
-						friendUploadPort + ")",
+						friendIP + ", " +
+						friendPort + ")",
 						"Erro", JOptionPane.WARNING_MESSAGE);
 				return;
         	}
         	try {
         		// diz o meu nome ;-;
         		BufferMethods.writeString(meUserName, dgsUploader);
+        		
+        		// diz que quer download ;-;
+        		BufferMethods.sendInt(1, dgsUploader);
         		
         		// descobre se o cara está pronto pro upload
         		BufferMethods.receiveFeedBack(dgsUploader);
@@ -795,19 +778,18 @@ public class Chat extends JFrame {
 						if (fP != -1 && lP != -1) {
 							String friendname = str.substring(0, fP - 1);
 							if (friendname.equals(friend)) {
-								String friendIP = str.substring(fP + 1, str.indexOf(','));
+								friendIP = str.substring(fP + 1, str.indexOf(','));
 								try {
-									int friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
+									friendPort = Integer.parseInt(str.substring(str.indexOf(',') + 2, lP));
 //									JOptionPane.showMessageDialog(Chat.this,
 //											"Encontramos " + friendname + " em " + friendIP + ", "
 //											+ friendPort,
 //											"Aha!", JOptionPane.WARNING_MESSAGE);
 
-									friendUploadPort = friendPort + 2;
 									friendSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
 									BufferMethods.writeString(usr, friendSocket);
-									BufferMethods.sendInt(SSList.get(2).getLocalPort(), friendSocket);
-									msgStatusSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort +1);
+									BufferMethods.sendInt(0, friendSocket);
+									msgStatusSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
 									msgstatusthread = new Thread(new MsgStatusIn());
 									msgrcv = new Thread(new ReceiveMessages());
 									msgstatusthread.start();
@@ -909,7 +891,29 @@ public class Chat extends JFrame {
 		this.amigos = amigos;
 	}
 	
-	public void setStuff(int uploadPort, DGSocket friendSocket, DGSocket msgStatusSocket) {
+	public String[] fetchFriendInfo() {
+		Iterator<String> it = amigos.iterator();
+		String[] retorno = new String[3];
+		while (it.hasNext()) {
+			String str = it.next();
+			int fP = str.indexOf('('), lP = str.lastIndexOf(')');
+			if (fP != -1 && lP != -1) {
+				retorno[1] = str.substring(fP + 1, str.indexOf(','));
+				retorno[0] = str.substring(0, fP - 1);
+				try {
+					retorno[2] = str.substring(str.indexOf(',') + 2, lP);
+					if (retorno[0].equals(Chat.this.friendName)) {
+						return retorno;
+					}
+				} catch (NumberFormatException e) {
+					System.out.println("erro tentando pegar porta");
+				}
+			}
+		}
+		return null;
+	}
+	
+	public void setStuff(DGSocket friendSocket, DGSocket msgStatusSocket) {
 		try {
 			this.friendSocket.close(false);
 		} catch (Exception e) {}
@@ -922,7 +926,6 @@ public class Chat extends JFrame {
 		msgstatusthread.interrupt();
 		this.friendSocket = friendSocket;
 		this.msgStatusSocket = msgStatusSocket;
-		this.friendUploadPort = uploadPort;
 		msgrcv = new Thread(new ReceiveMessages());
 		msgstatusthread = new Thread(new MsgStatusIn());
 		msgrcv.start();

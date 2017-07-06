@@ -16,12 +16,13 @@ public class DGServerSocket {
 	private DatagramSocket socket;
 	private boolean closed;
 	
-	public DGServerSocket(int port) throws SocketException {
+	public DGServerSocket(int port, boolean setReuseAddr) throws SocketException {
 		this.socket = new DatagramSocket(port);
+		this.socket.setReuseAddress(setReuseAddr);
 	}
 	
 	public static void main(String[] args) throws Exception {
-		DGServerSocket teste = new DGServerSocket(2020);
+		DGServerSocket teste = new DGServerSocket(2020, false);
 		System.out.println("Criei teste");
 		DGSocket teste2 = teste.accept(0, new int[1]);
 		System.out.println("Recebi teste2");

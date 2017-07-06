@@ -1,17 +1,12 @@
 package cliente;
 
-import java.awt.Desktop;
 import java.awt.EventQueue;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.IOException;
 
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 
@@ -90,6 +85,8 @@ public class DownloadPainel extends JPanel {
 	
 	public void killlblRTT() {
 		this.remove(lblRTT);
+		repaint();
+		validate();
 	}
 	
 	public void setLblRTT(long rtt) {

@@ -15,7 +15,6 @@ import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -474,10 +473,13 @@ public class Login extends JFrame {
 				notBrokenFinished = false;
 				(new Thread(new naoQuebrou())).start();
 				toServer = new ServerAPI(0, new int[1], txtIp.getText(), Integer.parseInt(txtPort.getText()));
-				Map.Entry<ArrayList<DGServerSocket>, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
+				Map.Entry<DGServerSocket, Integer> mp = toServer.login(usrTextField.getText(), new String(passwordField.getPassword()));
 				notBrokenFinished = true;
 				int status = mp.getValue().intValue();
-				if (status == 1) {
+				if (mp.getKey() == null) {
+					lblUsrInfo.setForeground(Color.RED);
+					lblUsrInfo.setText("Não conseguimos porta");
+				} else if (status == 1) {
 //					dispose(); quando eu uso dispose fica um ícone fantasma na barra de tarefas
 					setVisible(false);
 					new Profile(mp.getKey(), usrTextField.getText(), txtIp.getText(), Integer.parseInt(txtPort.getText()));
@@ -489,7 +491,7 @@ public class Login extends JFrame {
 					lblUsrInfo.setText("Usuário ou senha incorretos");
 				} else if (status == -1) {
 					lblUsrInfo.setForeground(Color.RED);
-					lblUsrInfo.setText("Não conseguimos portas livres");
+					lblUsrInfo.setText("Não conseguimos porta livre");
 				}
 			} catch (ConnectException e1) {
 				notBrokenFinished = true;

@@ -116,17 +116,29 @@ public class ServerAPI {
 	 * @throws UnknownHostException
 	 * @throws IOException
 	 */
-	public Map.Entry<ArrayList<DGServerSocket>, Integer> login(String username, String password)
+	public Map.Entry<DGServerSocket, Integer> login(String username, String password)
 			throws GeneralSecurityException, IOException {
-		ArrayList<DGServerSocket> returnSocket = new ArrayList<DGServerSocket>();
 		DGSocket connectionSocket = null;
+		DGServerSocket returnSocket = null;
 		int status = -2;
+		int portaDaSessao = 0;
 		try {
-			// se conecta ao servidor de operações
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			portaDaSessao = 2031;
+			while (portaDaSessao < 65525) {
+				try {
+					// tenta se conectar ao servidor de operações
+					connectionSocket = new DGSocket(new int[1], portaDaSessao, this.ip, this.port);
+					break;
+				} catch (IOException e) {
+					System.out.println(portaDaSessao + " indisponível, tentando com a próxima porta...");
+					portaDaSessao++;
+				}
+			}
+			if (portaDaSessao >= 65525) {
+				return new AbstractMap.SimpleEntry<DGServerSocket, Integer>(null, new Integer(-1));
+			}
+			
 			System.out.println("Consegui uma connectionsocket pra falar com o server");
-//			OutputStream outToServer = connectionSocket.getOutputStream();
-//			InputStream inFromServer = connectionSocket.getInputStream();
 			// cadastro(0), login(1)		
 //			outToServer.write(1);
 			BufferMethods.sendInt(1, connectionSocket);
@@ -156,82 +168,32 @@ public class ServerAPI {
 				
 				// agora checamos se acertamos as credenciais, se acertamos então podemos criar uma ServerSocket
 				// e dar essa porta pro servidor constatar que estamos online e podemos receber por essa porta.
-				int portaDaSessao = 2030;
-				if (status == 1) {
-					while (returnSocket.size() != 6 && portaDaSessao < 65525) {
-						DGServerSocket temp1 = null;
-						DGServerSocket temp2 = null;
-						DGServerSocket temp3 = null;
-						DGServerSocket temp4 = null;
-						DGServerSocket temp5 = null;
-						DGServerSocket temp6 = null;
-						try {
-							temp1 = new DGServerSocket(portaDaSessao);
-							returnSocket.add(temp1); // chat
-							portaDaSessao++;
-							temp2 = new DGServerSocket(portaDaSessao);
-							returnSocket.add(temp2); // transferencia
-							portaDaSessao++;
-							temp3 = new DGServerSocket(portaDaSessao);
-							returnSocket.add(temp3); // rtt
-							portaDaSessao++;
-							temp4 = new DGServerSocket(portaDaSessao);
-							returnSocket.add(temp4); // lista de amigos
-							portaDaSessao++;
-							temp5 = new DGServerSocket(portaDaSessao);
-							returnSocket.add(temp5); // solicitação de amizade
-							portaDaSessao++;
-							temp6 = new DGServerSocket(portaDaSessao);
-							returnSocket.add(temp6); // ping
-						} catch (IOException e) {
-							returnSocket.clear();
-							if (temp1 != null) {
-								temp1.close();
-							}
-							if (temp2 != null) {
-								temp2.close();
-							}
-							if (temp3 != null) {
-								temp3.close();
-							}
-							if (temp4 != null) {
-								temp4.close();
-							}
-							if (temp5 != null) {
-								temp5.close();
-							}
-							System.out.println(portaDaSessao + " indisponível, tentando com a próxima seq de 6 portas...");
-							portaDaSessao++;
-						}
-					}
-					if (!returnSocket.isEmpty()) {
-						// diz que conseguiu um servidor
-//						outToServer.write(1);
-						BufferMethods.sendFeedBack(1, connectionSocket);
-//						byte[] buffer = new byte[256];
-//						BufferMethods.toByteArray(buffer, returnSocket.get(0).getLocalPort());
-						// envia número de porta
-//						outToServer.write(buffer, 0, 5);
-						BufferMethods.sendInt(returnSocket.get(0).getLocalPort(), connectionSocket);
-					} else {
-						status = -1;
-//						outToServer.write(0);
-						BufferMethods.sendFeedBack(0, connectionSocket);
-					}
-				}
+				
 			}	
 		} finally {
 			if (connectionSocket != null) {
 				if (!connectionSocket.isClosed()) {
 					try {
-						connectionSocket.close(false);
+						connectionSocket.close(true);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					try{
+						returnSocket = new DGServerSocket(portaDaSessao, true);
+						// pro nat tem que ser reuse address
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
 				}
 			}
 		}
-		return new AbstractMap.SimpleEntry<ArrayList<DGServerSocket>, Integer>(returnSocket, new Integer(status));
+		return new AbstractMap.SimpleEntry<DGServerSocket, Integer>(returnSocket, new Integer(status));
 	}
 	
 	/**
@@ -253,7 +215,7 @@ public class ServerAPI {
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, chatPort, this.ip, this.port);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			// cadastro(0), login(1)		
@@ -270,13 +232,13 @@ public class ServerAPI {
 //				status = inFromServer.read();
 				status = BufferMethods.receiveFeedBack(connectionSocket);
 				
-				if (status == 1) {
-//					byte[] buffer = new byte[256];
-//					BufferMethods.toByteArray(buffer, chatPort);
-					// envia número de porta
-//					outToServer.write(buffer, 0, 5);
-					BufferMethods.sendInt(chatPort, connectionSocket);
-				}
+//				if (status == 1) {
+////					byte[] buffer = new byte[256];
+////					BufferMethods.toByteArray(buffer, chatPort);
+//					// envia número de porta
+////					outToServer.write(buffer, 0, 5);
+//					BufferMethods.sendInt(chatPort, connectionSocket);
+//				}
 			}	
 		} catch (IOException e) {
 			throw e;
