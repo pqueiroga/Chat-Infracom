@@ -174,7 +174,7 @@ public class DGServerSocket {
 	
 	private boolean getSyn(byte[] data) {
 		try { 
-			return data[11] == 1 ? true : false;
+			return data[11] == 1 && data[10] == 0;
 		} catch (Exception e) {
 			return false;
 		}

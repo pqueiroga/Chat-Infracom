@@ -842,7 +842,7 @@ public class DGSocket {
 					}
 					switch (ESTADO) {
 					case "SYN RECEIVED":
-						if (getAck(data)) {
+						if (getAck(data) && !getSyn(data)) {
 							System.out.println("Eu: " + socket.getLocalAddress().getHostName() +
 									", " + socket.getLocalPort() + " Recebi ack de " + dp.getAddress().getHostName() + ", " +
 									dp.getPort());
