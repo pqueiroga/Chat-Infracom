@@ -125,7 +125,7 @@ public class ServerAPI {
 		int portaDaSessao = 0;
 		int tries = 0;
 		try {
-			portaDaSessao = 2030;
+			portaDaSessao = 2050;
 			while (portaDaSessao < 65525) {
 				try {
 					// tenta se conectar ao servidor de operações

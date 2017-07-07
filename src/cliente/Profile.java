@@ -451,10 +451,10 @@ public class Profile extends JFrame implements ChangeListener {
 										if (chats.containsKey(friendnameLocal)) {
 											chats.get(friendnameLocal).setVisible(true);
 										} else {
-											DGSocket connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, friendPortLocal);
+											DGSocket connectionSocket = new DGSocket(0, pDescartaPacotes, pktsPerdidos, friendIPLocal, friendPortLocal);
 											BufferMethods.writeString(username, connectionSocket);
 											BufferMethods.sendInt(0, connectionSocket);
-											DGSocket msgStatusSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, friendPortLocal);
+											DGSocket msgStatusSocket = new DGSocket(0, pDescartaPacotes, pktsPerdidos, friendIPLocal, friendPortLocal);
 											Chat novoChat = new Chat(username, friendnameLocal, connectionSocket,
 													msgStatusSocket, amigos, pktsPerdidos, pDescartaPacotes, true);
 											chats.put(friendnameLocal, novoChat);
@@ -519,11 +519,11 @@ public class Profile extends JFrame implements ChangeListener {
 				DGSocket connectionSocket = null;
 				try {
 					long[] estimatedRTT = {-1};
-					connectionSocket = listenSocket.accept(estimatedRTT, pDescartaPacotes, pktsPerdidos);
+					connectionSocket = listenSocket.accept(0, estimatedRTT, pDescartaPacotes, pktsPerdidos);
 					String friendname = BufferMethods.readString(connectionSocket);
 					int opcode = BufferMethods.receiveInt(connectionSocket);
 					if (opcode == 0) {
-						DGSocket msgStatusSocket = listenSocket.accept(pDescartaPacotes, pktsPerdidos);
+						DGSocket msgStatusSocket = listenSocket.accept(0, new long[1], pDescartaPacotes, pktsPerdidos);
 						if (chats.containsKey(friendname)) {
 							chats.get(friendname).setStuff(connectionSocket, msgStatusSocket);
 						} else {

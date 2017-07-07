@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.net.PortUnreachableException;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -20,6 +21,8 @@ import utility.buffer.BufferMethods;
 public class DGSocket {
 	
 	private double pDescartaPacote = 0.0;
+	
+	private int soTimeout = 20000;
 	
 	private boolean portUnreachable = false;
 	private boolean connectionRefused = false;
@@ -91,7 +94,11 @@ public class DGSocket {
 	
 	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
 		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
-	}	
+	}
+	
+	public DGSocket(int timeout, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
+		this(timeout, null, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
+	}
 	
 	public DGSocket(double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
 		this(null, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
@@ -110,8 +117,12 @@ public class DGSocket {
 	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
 		this(null, 0, pktsPerdidos, port, remoteIP, remotePort, ESTADO, ackNum);
 	}
-	
 	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+		this(20000, estimatedrtt, pDescartaPacotes, pktsPerdidos, port, remoteIP, remotePort, ESTADO, ackNum);
+	}
+	
+	public DGSocket(int timeout, long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+		this.soTimeout = Math.max(0, timeout);
 		if (estimatedrtt == null) {
 			this.estimatedRTT[0] = -1;
 		} else {
@@ -139,7 +150,7 @@ public class DGSocket {
 			this.remotePort = remotePort;
 			this.remoteInetAddress = InetAddress.getByName(remoteIP);
 			this.socket.connect(remoteInetAddress, remotePort);
-
+			this.socket.setSoTimeout(soTimeout);
 			tRecebe = new Thread(new RecebeDados());
 			tEnvia = new Thread(new EnviaDados());
 			tEnvia.setDaemon(true);
@@ -167,6 +178,7 @@ public class DGSocket {
 				this.socket.bind(sockaddr);
 			}
 			this.socket.connect(InetAddress.getByName(remoteIP), remotePort);
+			this.socket.setSoTimeout(soTimeout);
 			System.out.println("conectei");
 			this.ackNum = ackNum;
 			this.rcvBase++;
@@ -663,7 +675,7 @@ public class DGSocket {
 				congwin = 1;
 				acksDuplicados = 0;
 				recuperacaoRapida = false;
-				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 4) || timeoutTries > 10) {
+				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 4) || timeoutTries > 30) {
 					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"end host não responde.");
 					connectionRefused = true;
 					close(true);
@@ -1307,14 +1319,22 @@ public class DGSocket {
 							}
 						}
 					}
-				} catch (PortUnreachableException e1) {
-					e1.printStackTrace();
+				} catch (SocketTimeoutException e) {
+					e.printStackTrace();
+					portUnreachable = true;
+					try {
+						close(true);
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+				} catch (PortUnreachableException e) {
+					e.printStackTrace();
 					portUnreachable = true;
 					try {
 						close(false);
-					} catch (IOException e) {
+					} catch (IOException e1) {
 						// TODO Auto-generated catch block
-						e.printStackTrace();
+						e1.printStackTrace();
 					}
 					return;
 				} catch (IOException e) {

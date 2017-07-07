@@ -127,15 +127,22 @@ public class Chat extends JFrame {
 		this.amigos = amigos;
 		this.meUserName = usr;
 		
-		String[] firstfetch = fetchFriendInfo();
-		if (firstfetch != null) {
+		for (int i = 0; i < 3; i++) {
 			try {
-				this.friendPort = Integer.parseInt(firstfetch[2]);
+				String[] fetched = fetchFriendInfo();
+				if (fetched != null) {
+					if (fetched[1] != null && Integer.parseInt(fetched[2]) != 0) {
+						friendIP = fetched[1];
+						friendPort = Integer.parseInt(fetched[2]);
+						break;
+					}
+				} 
 			} catch (NumberFormatException e) {
-				System.err.println("não foi possível pegar a porta no firstfetch");
 				e.printStackTrace();
 			}
-			friendIP = firstfetch[1];
+		}
+		if (friendIP == null || friendPort == 0) {
+			System.err.println("não foi possível pegar o ip ou porta no firstfetch");
 		}
 		
 		this.pktsPerdidos = pktsPerdidos;
@@ -399,6 +406,29 @@ public class Chat extends JFrame {
 						"Erro", JOptionPane.WARNING_MESSAGE);
 				return;
 			}
+			if (friendIP == null || friendPort == 0) {
+				for (int i = 0; i < 3; i++) {
+					try {
+						String[] fetched = fetchFriendInfo();
+						if (fetched != null) {
+							if (fetched[1] != null && Integer.parseInt(fetched[2]) != 0) {
+								friendIP = fetched[1];
+								friendPort = Integer.parseInt(fetched[2]);
+								break;
+							}
+						} 
+					} catch (NumberFormatException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			if (friendIP == null || friendPort == 0) {
+				JOptionPane.showMessageDialog(Chat.this,
+						"Não foi possível pegar a porta do seu amigo, ops.",
+						"Erro", JOptionPane.WARNING_MESSAGE);
+				return;
+			}
+			
         	try {
         		dgsUploader = new DGSocket(estimatedRTT, pDescartaPacotes, Chat.this.pktsPerdidos,
         				friendIP,
@@ -786,10 +816,10 @@ public class Chat extends JFrame {
 //											+ friendPort,
 //											"Aha!", JOptionPane.WARNING_MESSAGE);
 
-									friendSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
+									friendSocket = new DGSocket(0, pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
 									BufferMethods.writeString(usr, friendSocket);
 									BufferMethods.sendInt(0, friendSocket);
-									msgStatusSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
+									msgStatusSocket = new DGSocket(0, pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
 									msgstatusthread = new Thread(new MsgStatusIn());
 									msgrcv = new Thread(new ReceiveMessages());
 									msgstatusthread.start();
@@ -902,7 +932,13 @@ public class Chat extends JFrame {
 				retorno[0] = str.substring(0, fP - 1);
 				try {
 					retorno[2] = str.substring(str.indexOf(',') + 2, lP);
+//					JOptionPane.showMessageDialog(Chat.this,
+//							retorno[0] + " (" + retorno[1] + ", " + retorno[2] + ")",
+//							"Erro", JOptionPane.WARNING_MESSAGE);
 					if (retorno[0].equals(Chat.this.friendName)) {
+//						JOptionPane.showMessageDialog(Chat.this,
+//								retorno[0] + " (" + retorno[1] + ", " + retorno[2] + ")",
+//								"Erro", JOptionPane.WARNING_MESSAGE);
 						return retorno;
 					}
 				} catch (NumberFormatException e) {

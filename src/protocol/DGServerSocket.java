@@ -108,10 +108,10 @@ public class DGServerSocket {
 	}
 	
 	public DGSocket accept(double pDescartaPacotes, int[] pktsPerdidos) throws Exception {
-		return accept(null, pDescartaPacotes, pktsPerdidos);
+		return accept(20000, new long[1], pDescartaPacotes, pktsPerdidos);
 	}
 	
-	public DGSocket accept(long[] estimatedRTT, double pDescartaPacotes, int[] pktsPerdidos) throws Exception {
+	public DGSocket accept(int timeout, long[] estimatedRTT, double pDescartaPacotes, int[] pktsPerdidos) throws Exception {
 		if (this.closed) {
 			throw new SocketException("DGServerSocket já está fechada.");
 		}
@@ -131,7 +131,7 @@ public class DGServerSocket {
 			
 			this.ackNum = getSeqNum(data) + 1;
 			
-			retorno2 = new DGSocket(estimatedRTT, pDescartaPacotes, pktsPerdidos, port, inicia.getAddress().getHostName(),
+			retorno2 = new DGSocket(timeout, estimatedRTT, pDescartaPacotes, pktsPerdidos, port, inicia.getAddress().getHostName(),
 					inicia.getPort(), "SYN RECEIVED", this.ackNum);
 			System.out.println("Vou travar esperando estado hehe");
 	
