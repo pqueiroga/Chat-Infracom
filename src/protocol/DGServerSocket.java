@@ -113,7 +113,7 @@ public class DGServerSocket {
 		DatagramPacket inicia = new DatagramPacket(data, headerLength);
 		boolean aceitou = false;
 		DGSocket retorno2 = null;
-		do {
+//		do {
 			do {
 				// PASSIVE OPEN
 				socket.receive(inicia);
@@ -126,27 +126,27 @@ public class DGServerSocket {
 			
 			retorno2 = new DGSocket(estimatedRTT, pDescartaPacotes, pktsPerdidos, inicia.getAddress().getHostName(),
 					inicia.getPort(), "SYN RECEIVED", this.ackNum);
-			System.out.println("Vou travar esperando estado hehe");
-	
-			while (true) {
-				try {
-					Thread.sleep(200);
-					if (retorno2.isClosed()) {
-//						throw new Exception("Erro tosco tentando aceitar conexão");
-						System.out.println("Erro tosco tentando aceitar conexão");
-						break;
-					} 
-					if (retorno2.getEstado().equals("ESTABLISHED")) {
-						aceitou = true;
-						break;
-					}
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-			System.out.println("estado established, vou devolver a socket pra main!");
-		} while (!aceitou); // tentativa de dar flush nos pacotes fantasma
+//			System.out.println("Vou travar esperando estado hehe");
+//	
+//			while (true) {
+//				try {
+//					Thread.sleep(200);
+//					if (retorno2.isClosed()) {
+////						throw new Exception("Erro tosco tentando aceitar conexão");
+//						System.out.println("Erro tosco tentando aceitar conexão");
+//						break;
+//					} 
+//					if (retorno2.getEstado().equals("ESTABLISHED")) {
+//						aceitou = true;
+//						break;
+//					}
+//				} catch (InterruptedException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
+//			}
+//			System.out.println("estado established, vou devolver a socket pra main!");
+//		} while (!aceitou); // tentativa de dar flush nos pacotes fantasma
 		return retorno2;
 	}
 	
@@ -167,7 +167,7 @@ public class DGServerSocket {
 	
 	private boolean getSyn(byte[] data) {
 		try { 
-			return data[11] == 1 ? true : false;
+			return data[11] == 1 && data[10] == 0;
 		} catch (Exception e) {
 			return false;
 		}
