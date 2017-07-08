@@ -231,7 +231,7 @@ class AtualizaLista implements Runnable {
 				try {
 					// age como uma thread consumidora que deve ser acordada sempre
 					// que tiver alguma modificacao na lista de usuarios online.
-					listaDeUsuarios.wait();
+					listaDeUsuarios.wait(2500);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
