@@ -205,15 +205,27 @@ public class ServerGUI extends JFrame {
 			for (int i = 0; i < 10; i++) {
 				try {
 					DatagramPacket dp = new DatagramPacket(bip, 1, InetAddress.getByName("255.255.255.255"), 2025);
-					broadcaster.send(dp);
-					broadcaster.send(dp);
-					broadcaster.send(dp);
+					try {
+						broadcaster.send(dp);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					try {
+						broadcaster.send(dp);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					try {
+						broadcaster.send(dp);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 					Thread.sleep(1000);
 				} catch (UnknownHostException e) {
 					// nunca deveria dar
-					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
