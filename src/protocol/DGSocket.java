@@ -32,12 +32,12 @@ public class DGSocket {
 	
 	private String ESTADO;
 	
-	private short RcvBuffer = 50;
+	private short RcvBuffer = 80;
 	private int headerLength = 14;
 	
 	private boolean recuperacaoRapida = false;
 	private short congwin = 1;
-	private short ssthresh = 20;
+	private short ssthresh = 64;
 	private byte acksDuplicados = 0;
 	private short varPrevencao = 0;
 	
