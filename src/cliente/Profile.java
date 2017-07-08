@@ -454,10 +454,10 @@ public class Profile extends JFrame implements ChangeListener {
 										if (chats.containsKey(friendnameLocal)) {
 											chats.get(friendnameLocal).setVisible(true);
 										} else {
-											DGSocket connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, friendPortLocal);
+											DGSocket connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, friendPortLocal, false);
 											BufferMethods.writeString(username, connectionSocket);
 											BufferMethods.sendInt(Profile.this.listenList.get(2).getLocalPort(), connectionSocket);
-											DGSocket msgStatusSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, (friendPortLocal + 1));
+											DGSocket msgStatusSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, friendIPLocal, (friendPortLocal + 1), false);
 											Chat novoChat = new Chat(username, friendnameLocal, friendPortLocal + 2, connectionSocket,
 													msgStatusSocket, listenList, amigos, pktsPerdidos, pDescartaPacotes, true);
 											chats.put(friendnameLocal, novoChat);

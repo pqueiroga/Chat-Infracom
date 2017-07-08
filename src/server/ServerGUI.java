@@ -190,7 +190,7 @@ public class ServerGUI extends JFrame {
 	private void serverGo(JTextPane usuariosTextPane, JLabel lblPacotesperdidos, JButton btnIniciar) {
 		try {
 			int port = Integer.parseInt(txtPorta.getText());
-			wSocket = new DGServerSocket(port);
+			wSocket = new DGServerSocket(port, true);
 			(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 			(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
 					btnIniciar, lblPacotesperdidos))).start();

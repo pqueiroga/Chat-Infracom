@@ -50,7 +50,7 @@ public class ServidorComeco implements Runnable {
 				e.printStackTrace();
 				if (e.getMessage().equals("DGServerSocket já está fechada.")) {
 					try {
-						servidor = new DGServerSocket(servidor.getLocalPort());
+						servidor = new DGServerSocket(servidor.getLocalPort(), true);
 					} catch (Exception e1) {
 						txtPorta.setText("Porta");
 						txtPorta.setEnabled(true);
