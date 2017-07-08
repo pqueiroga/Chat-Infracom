@@ -98,24 +98,28 @@ public class ServidorComeco implements Runnable {
 		public void run() {
 			long newTime;
 			while (true) {
-				synchronized (timer) {
-					newTime = System.currentTimeMillis();
-					for (ConcurrentMap.Entry<String, Long> entry : timer.entrySet()) {
-						if (newTime - entry.getValue().longValue() > 25000) {
-							synchronized (listaDeUsuarios) {
-								int pos = usuarioListaOnline(listaDeUsuarios, entry.getKey());
-								if (pos != -1 ) {
-									timer.remove(entry.getKey());
-									listaDeUsuarios.remove(pos);
-									listaDeUsuarios.notify();
+				try {
+					synchronized (timer) {
+						newTime = System.currentTimeMillis();
+						for (ConcurrentMap.Entry<String, Long> entry : timer.entrySet()) {
+							if (newTime - entry.getValue().longValue() > 25000) {
+								synchronized (listaDeUsuarios) {
+									int pos = usuarioListaOnline(listaDeUsuarios, entry.getKey());
+									if (pos != -1 ) {
+										timer.remove(entry.getKey());
+										listaDeUsuarios.remove(pos);
+										listaDeUsuarios.notify();
+									}
 								}
 							}
-						}
-					}	
-				}
-				try {
-					Thread.sleep(5000);
-				} catch (InterruptedException e) {
+						}	
+					}
+					try {
+						Thread.sleep(5000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
