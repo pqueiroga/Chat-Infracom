@@ -50,7 +50,7 @@ public class ServerAPI {
 		DGSocket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -123,7 +123,7 @@ public class ServerAPI {
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 			System.out.println("Consegui uma connectionsocket pra falar com o server");
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
@@ -166,22 +166,22 @@ public class ServerAPI {
 						DGServerSocket temp5 = null;
 						DGServerSocket temp6 = null;
 						try {
-							temp1 = new DGServerSocket(portaDaSessao);
+							temp1 = new DGServerSocket(portaDaSessao, true);
 							returnSocket.add(temp1); // chat
 							portaDaSessao++;
-							temp2 = new DGServerSocket(portaDaSessao);
+							temp2 = new DGServerSocket(portaDaSessao, true);
 							returnSocket.add(temp2); // transferencia
 							portaDaSessao++;
-							temp3 = new DGServerSocket(portaDaSessao);
+							temp3 = new DGServerSocket(portaDaSessao, true);
 							returnSocket.add(temp3); // rtt
 							portaDaSessao++;
-							temp4 = new DGServerSocket(portaDaSessao);
+							temp4 = new DGServerSocket(portaDaSessao, true);
 							returnSocket.add(temp4); // lista de amigos
 							portaDaSessao++;
-							temp5 = new DGServerSocket(portaDaSessao);
+							temp5 = new DGServerSocket(portaDaSessao, true);
 							returnSocket.add(temp5); // solicitação de amizade
 							portaDaSessao++;
-							temp6 = new DGServerSocket(portaDaSessao);
+							temp6 = new DGServerSocket(portaDaSessao, true);
 							returnSocket.add(temp6); // ping
 						} catch (IOException e) {
 							returnSocket.clear();
@@ -253,7 +253,7 @@ public class ServerAPI {
 		int status = -2;
 		try {
 			// se conecta ao servidor de operações
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			// cadastro(0), login(1)		
@@ -304,7 +304,7 @@ public class ServerAPI {
 		DGSocket connectionSocket = null;
 		try {
 			// se conecta ao servidor de operacoes em contas
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -346,7 +346,7 @@ public class ServerAPI {
 		ArrayList<String> retorno = new ArrayList<String>();
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -388,7 +388,7 @@ public class ServerAPI {
 	public int solicitaAmizade(String user, String friend) throws IOException {
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -496,7 +496,7 @@ public class ServerAPI {
 		ArrayList<String> retorno = new ArrayList<String>();
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			
@@ -537,7 +537,7 @@ public class ServerAPI {
 	private int aceitaRecusaAmizade(String user, String friend, int op) throws IOException {
 		DGSocket connectionSocket = null;
 		try {
-			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port);
+			connectionSocket = new DGSocket(pDescartaPacotes, pktsPerdidos, this.ip, this.port, true);
 //			OutputStream outToServer = connectionSocket.getOutputStream();
 //			InputStream inFromServer = connectionSocket.getInputStream();
 			

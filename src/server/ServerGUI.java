@@ -243,7 +243,7 @@ public class ServerGUI extends JFrame {
 			
 //			(new Thread(new Sonar(broadcaster, 2025))).start();
 
-			wSocket = new DGServerSocket(port);
+			wSocket = new DGServerSocket(port, true);
 			(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 			(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
 					btnIniciar, lblPacotesperdidos))).start();

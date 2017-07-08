@@ -422,7 +422,7 @@ public class Chat extends JFrame {
         	try {
         		dgsUploader = new DGSocket(estimatedRTT, pDescartaPacotes, Chat.this.pktsPerdidos,
         				friendSocket.getInetAddress().getHostName(),
-        				friendUploadPort);
+        				friendUploadPort, true);
         	} catch (Exception e) {
         		if (fInputStream != null) {
         			try {
@@ -804,10 +804,10 @@ public class Chat extends JFrame {
 //											"Aha!", JOptionPane.WARNING_MESSAGE);
 
 									friendUploadPort = friendPort + 2;
-									friendSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort);
+									friendSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort, false);
 									BufferMethods.writeString(usr, friendSocket);
 									BufferMethods.sendInt(SSList.get(2).getLocalPort(), friendSocket);
-									msgStatusSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort +1);
+									msgStatusSocket = new DGSocket(pDescartaPacotes, Chat.this.pktsPerdidos, friendIP, friendPort +1, false);
 									msgstatusthread = new Thread(new MsgStatusIn());
 									msgrcv = new Thread(new ReceiveMessages());
 									msgstatusthread.start();

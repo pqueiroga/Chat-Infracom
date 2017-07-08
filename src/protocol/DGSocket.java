@@ -78,33 +78,33 @@ public class DGSocket {
 	
 	private int[] pktsPerdidos;
 	
-	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort, String ESTADO, int ackNum, boolean settimeout) throws IOException {
 //		this(pktsPerdidos, -1, remoteIP, remotePort, ESTADO, ackNum);
-		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, ESTADO, ackNum);
+		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, ESTADO, ackNum, settimeout);
 	}
 	
 //	public DGSocket(String remoteIP, int remotePort) throws IOException {
 //		this(new int[1], -1, remoteIP, remotePort, "CLOSED", 0);
 //	}
 	
-	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
-		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
+	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort, boolean settimeout) throws IOException {
+		this(estimatedrtt, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0, settimeout);
 	}	
-	public DGSocket(double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
-		this(null, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
+	public DGSocket(double pDescartaPacotes, int[] pktsPerdidos, String remoteIP, int remotePort, boolean settimeout) throws IOException {
+		this(null, pDescartaPacotes, pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0, settimeout);
 	}
-	public DGSocket(int[] pktsPerdidos, String remoteIP, int remotePort) throws IOException {
-		this(pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0);
+	public DGSocket(int[] pktsPerdidos, String remoteIP, int remotePort, boolean settimeout) throws IOException {
+		this(pktsPerdidos, -1, remoteIP, remotePort, "CLOSED", 0, settimeout);
 	}
-	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort) throws IOException {
-		this(pktsPerdidos, port, remoteIP, remotePort, "CLOSED", 0);
-	}
-	
-	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
-		this(null, 0, pktsPerdidos, port, remoteIP, remotePort, ESTADO, ackNum);
+	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort, boolean settimeout) throws IOException {
+		this(pktsPerdidos, port, remoteIP, remotePort, "CLOSED", 0, settimeout);
 	}
 	
-	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum) throws IOException {
+	public DGSocket(int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum, boolean settimeout) throws IOException {
+		this(null, 0, pktsPerdidos, port, remoteIP, remotePort, ESTADO, ackNum, settimeout);
+	}
+	
+	public DGSocket(long[] estimatedrtt, double pDescartaPacotes, int[] pktsPerdidos, int port, String remoteIP, int remotePort, String ESTADO, int ackNum, boolean settimeout) throws IOException {
 		if (estimatedrtt == null) {
 			this.estimatedRTT[0] = -1;
 		} else {
@@ -125,6 +125,9 @@ public class DGSocket {
 				this.socket = new DatagramSocket();
 			} else {
 				this.socket = new DatagramSocket(port);
+			}
+			if (settimeout) {
+				this.socket.setSoTimeout(20000);
 			}
 			this.remotePort = remotePort;
 			this.remoteInetAddress = InetAddress.getByName(remoteIP);
@@ -148,6 +151,9 @@ public class DGSocket {
 			break;
 		case "SYN RECEIVED":
 			this.socket = new DatagramSocket();
+			if (settimeout) {
+				this.socket.setSoTimeout(20000);
+			}
 			this.socket.connect(InetAddress.getByName(remoteIP), remotePort);
 			System.out.println("conectei");
 			this.ackNum = ackNum;
@@ -283,51 +289,51 @@ public class DGSocket {
 		return b;
 	}
 	
-	public static void main(String[] args) throws IOException {
-		DGSocket teste = new DGSocket(new int[1], "localhost", 2020);
-//		byte[] teste1 = "oi".getBytes("UTF-8");
-//		System.out.println("Vou usar o send na main");
-//		teste.send(teste1, teste1.length);
-//		System.out.println("Usei o send na main");
-//		byte[] teste2 = new byte[6];
-//		teste.receive(teste2, 2);
+//	public static void main(String[] args) throws IOException {
+//		DGSocket teste = new DGSocket(new int[1], "localhost", 2020);
+////		byte[] teste1 = "oi".getBytes("UTF-8");
+////		System.out.println("Vou usar o send na main");
+////		teste.send(teste1, teste1.length);
+////		System.out.println("Usei o send na main");
+////		byte[] teste2 = new byte[6];
+////		teste.receive(teste2, 2);
+////
+////		for (int i = 1000; i < 10000; i++) {
+////			teste1 = ("oi" + i).getBytes("UTF-8");
+////			teste.send(teste1, 6);
+////		}
+////		System.out.println("Fim");
+//		
+//		
+//		String directory = "Upload_Pool" + File.separator;
+//		String fileName = "Groovin' Magic.flac";
+//		File uploadFile = new File("/home/pedro/InfraComProject/Upload_Pool/" + fileName);
+//		if (uploadFile.isFile()) {
+//			// diz nome do arquivo que estarei enviando
+//			BufferMethods.writeString(fileName, teste);
+//			System.out.println(directory + fileName);
+//			// diz quantos bytes estarei enviando
+//			System.out.println("fileSize: " + uploadFile.length());
 //
-//		for (int i = 1000; i < 10000; i++) {
-//			teste1 = ("oi" + i).getBytes("UTF-8");
-//			teste.send(teste1, 6);
+//			BufferMethods.sendLong(uploadFile.length(), teste);
+//			
+//			long remainingSize = uploadFile.length();
+//			byte[] buffer = new byte[1024];
+//			int bytesRead;
+//			FileInputStream fInputStream = new FileInputStream(uploadFile);
+//			
+//			while (remainingSize > 0  && (bytesRead = fInputStream.read(buffer, 0,
+//					(int)Math.min(buffer.length, remainingSize))) != -1) {
+//				remainingSize -= bytesRead;
+//				System.out.println("bytesRead: " + bytesRead + "\nremainingSize: " + remainingSize);
+//				teste.send(buffer, bytesRead);
+//			}
+//			fInputStream.close();
 //		}
-//		System.out.println("Fim");
-		
-		
-		String directory = "Upload_Pool" + File.separator;
-		String fileName = "Groovin' Magic.flac";
-		File uploadFile = new File("/home/pedro/InfraComProject/Upload_Pool/" + fileName);
-		if (uploadFile.isFile()) {
-			// diz nome do arquivo que estarei enviando
-			BufferMethods.writeString(fileName, teste);
-			System.out.println(directory + fileName);
-			// diz quantos bytes estarei enviando
-			System.out.println("fileSize: " + uploadFile.length());
-
-			BufferMethods.sendLong(uploadFile.length(), teste);
-			
-			long remainingSize = uploadFile.length();
-			byte[] buffer = new byte[1024];
-			int bytesRead;
-			FileInputStream fInputStream = new FileInputStream(uploadFile);
-			
-			while (remainingSize > 0  && (bytesRead = fInputStream.read(buffer, 0,
-					(int)Math.min(buffer.length, remainingSize))) != -1) {
-				remainingSize -= bytesRead;
-				System.out.println("bytesRead: " + bytesRead + "\nremainingSize: " + remainingSize);
-				teste.send(buffer, bytesRead);
-			}
-			fInputStream.close();
-		}
-		
-		teste.close(false);
-		System.out.println("Enquanto fecha eu posso continuar fazendo coisas");
-	}
+//		
+//		teste.close(false);
+//		System.out.println("Enquanto fecha eu posso continuar fazendo coisas");
+//	}
 	
 	public String getEstado() {
 		return this.ESTADO;
