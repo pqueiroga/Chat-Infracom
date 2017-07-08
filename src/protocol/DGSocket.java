@@ -27,7 +27,7 @@ public class DGSocket {
 	
 	private String ESTADO;
 	
-	private short RcvBuffer = 80;
+	private short RcvBuffer = 100;
 	private int headerLength = 14;
 	
 	private boolean recuperacaoRapida = false;

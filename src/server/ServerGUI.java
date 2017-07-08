@@ -14,6 +14,12 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.BindException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -190,6 +196,13 @@ public class ServerGUI extends JFrame {
 	private void serverGo(JTextPane usuariosTextPane, JLabel lblPacotesperdidos, JButton btnIniciar) {
 		try {
 			int port = Integer.parseInt(txtPorta.getText());
+			DatagramSocket broadcaster = new DatagramSocket(null);
+			broadcaster.setReuseAddress(true);
+			broadcaster.setBroadcast(true);
+			SocketAddress sa = new InetSocketAddress(port);
+			broadcaster.bind(sa);
+			(new Thread(new Sonar(broadcaster, 2025))).start();
+
 			wSocket = new DGServerSocket(port);
 			(new Thread(new AtualizaLista(listaDeUsuarios, usuariosTextPane))).start();
 			(new Thread(new ServidorComeco(listaDeUsuarios, wSocket, txtPorta,
@@ -208,224 +221,37 @@ public class ServerGUI extends JFrame {
 	}
 }
 
-/**
- * thread que simula um cliente, para testes apenas.
- * @author Pedro Queiroga <psq@cin.ufpe.br>
- *
- *//*
-class listTester implements Runnable {
-
-	@Override
+class Sonar implements Runnable {
+	DatagramSocket broadcaster;
+	int port;
+	
+	public Sonar(DatagramSocket broadcaster, int port) {
+		this.port = port;
+		this.broadcaster = broadcaster;
+	}
+	
 	public void run() {
-		Scanner in = new Scanner(System.in);
-		String usr, pw;
-		int operacao, status;
-		ServerAPI servapi = new ServerAPI("localhost", 2020);
 		while (true) {
-			System.out.println("0 - Cadastro\n"
-					+ "1 - Login\n"
-					+ "2 - Logout\n"
-					+ "3 - Listar onlines\n"
-					+ "4 - Solicitar amizade\n"
-					+ "5 - Aceitar amizade\n"
-					+ "6 - Recusar amizade\n"
-					+ "7 - Remover amigo\n"
-					+ "8 - Listar amigos online\n"
-					+ "9 - Listar solicitações pendentes\n"
-					+ "10 - Listar amigos\n");
-			operacao = Integer.parseInt(in.nextLine());
-			switch (operacao) {
-			case 0: // cadastro
-				int cadastroOK = -2;
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				System.out.println("Insira pw");
-				pw = in.nextLine();
-				try {
-					cadastroOK = servapi.cadastro(usr, pw);
-				} catch (IOException | GeneralSecurityException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				if (cadastroOK == 1) {
-					System.out.println("Cadastro efetuado com sucesso");
-				} else {
-					System.out.println("Nome de usuário indisponível " + usr);
-				}
-				break;
-			case 1: // login
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				System.out.println("Insira pw");
-				pw = in.nextLine();
-				Entry<ArrayList<ServerSocket>, Integer> loginTuple = null;
-				try {
-					loginTuple = servapi.login(usr, pw);
-				} catch (GeneralSecurityException | IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-//				ServerSocket welcomeSocket = null;
-				status = -1;
-				if (loginTuple != null) {
-					status = loginTuple.getValue().intValue();
-					if (loginTuple.getKey().size() != 6) {
-//						welcomeSocket = null;
-					} else {
-						for (int i = 0; i < 6; i++) {
-							try {
-								loginTuple.getKey().get(i).close();
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-						}
-					}
-				}
-				if (status == 2) {
-					System.out.println("Usuário já está online");
-				} else if (status == 0) {
-					System.out.println("Usuário ou senha incorretos");
-				} else if (status == -1) {
-					System.out.println("Erro tosco durante login");
-				} else if (status == 1) {
-					System.out.println("Login efetuado com sucesso");
-				}
-				break;
-			case 2: // logout
-				boolean logoutOK = false;
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				try {
-					logoutOK = servapi.logout(usr);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				if (logoutOK) {
-					System.out.println("Logout efetuado com sucesso");
-				} else {
-					System.out.println("Deu alguma bronca no logout");
-				}
-				break;
-			case 3: // listar onlines
-				String str = null;
-				try {
-					str = AtualizaLista.prettyListToString(servapi.pegaOnlines());
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				System.out.println(str);
-				break;
-			case 4: // solicitar amizade
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				System.out.println("Insira friend");
-				pw = in.nextLine();
-				try {
-					status = servapi.solicitaAmizade(usr, pw);
-					if (status == -1) {
-						System.out.println("Servidor não conseguiu se conectar ao BD!");
-					} else if (status == 0) {
-						System.out.println("pedido n foi efetuado ok por alguma razão que NÃO é relação já existente!");
-					} else if (status == 1) {
-						System.out.println("OK!");
-					} else if (status == 2) {
-						System.out.println("já existe uma relação para esses usuários ou que algum dos dois usuários não existe!");
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				break;
-			case 5: // aceitar amizade
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				System.out.println("Insira friend");
-				pw = in.nextLine();
-				try {
-					status = servapi.aceitarAmizade(usr, pw);
-					if (status == -1) {
-						System.out.println("Servidor não conseguiu se conectar ao BD!");
-					} else if (status == 0) {
-						System.out.println("operação não foi concluída por alguma razão que não é falha na conexão com BD!");
-					} else if (status == 1) {
-						System.out.println("OK!");
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				break;
-			case 6: // recusar amizade
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				System.out.println("Insira friend");
-				pw = in.nextLine();
-				try {
-					status = servapi.recusarAmizade(usr, pw);
-					if (status == -1) {
-						System.out.println("Servidor não conseguiu se conectar ao BD!");
-					} else if (status == 0) {
-						System.out.println("operação não foi concluída por alguma razão que não é falha na conexão com BD!");
-					} else if (status == 1) {
-						System.out.println("OK!");
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				break;
-			case 7: // remover amigo
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				System.out.println("Insira friend");
-				pw = in.nextLine();
-				try {
-					status = servapi.removerAmigo(usr, pw);
-					if (status == -1) {
-						System.out.println("Servidor não conseguiu se conectar ao BD!");
-					} else if (status == 0) {
-						System.out.println("operação não foi concluída por alguma razão que não é falha na conexão com BD!");
-					} else if (status == 1) {
-						System.out.println("OK!");
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				break;
-			case 8: // listar amigos online
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				try {
-					ArrayList<String> lista = servapi.pegaAmigosOnlines(usr);
-					System.out.println(AtualizaLista.prettyListToString(lista));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				break;
-			case 9: // listar solicitacoes pendentes
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				try {
-					ArrayList<String> lista = servapi.pegaSolicitacoesPendentes(usr);
-					System.out.println(AtualizaLista.prettyListToString(lista));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				break;
-			case 10:
-				System.out.println("Insira usr");
-				usr = in.nextLine();
-				try {
-					ArrayList<String> lista = servapi.pegaAmigos(usr);
-					System.out.println(AtualizaLista.prettyListToString(lista));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+			byte[] bip = {1};
+			try {
+//				for (int i = 0; i < 40; i++) {
+					DatagramPacket dp = new DatagramPacket(bip, 1, InetAddress.getByName("255.255.255.255"), port);
+					broadcaster.send(dp);
+//				}
+				Thread.sleep(7000);
+			} catch (UnknownHostException e) {
+				// nunca deveria dar
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
-		
-	}	
-}*/
+	}
+}
 
 /**
  * Thread que atualiza a lista de usuarios online na janela do servidor

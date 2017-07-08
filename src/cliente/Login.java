@@ -14,6 +14,9 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.SocketException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Map;
@@ -256,6 +259,8 @@ public class Login extends JFrame {
 		gbc_btnLogin.gridx = 3;
 		gbc_btnLogin.gridy = 10;
 		contentPane.add(btnLogin, gbc_btnLogin);
+		
+		(new Thread(new EscutaSonar())).start();
 		
 		lblNotbroken = new JLabel("     ");
 		GridBagConstraints gbc_lblNotbroken = new GridBagConstraints();
@@ -509,6 +514,26 @@ public class Login extends JFrame {
 				btnLogin.setEnabled(true);
 				txtIp.setEnabled(true);
 				txtPort.setEnabled(true);
+			}
+		}
+	}
+	
+	class EscutaSonar implements Runnable {
+		public void run() {
+			try {
+				DatagramSocket escuta = new DatagramSocket(2025);
+				byte[] bip = new byte[1];
+				DatagramPacket rcv = new DatagramPacket(bip, 1);
+				escuta.receive(rcv);
+				txtIp.setText(rcv.getAddress().getHostAddress());
+				txtPort.setText(""+rcv.getPort());
+				escuta.close();
+			} catch (SocketException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
