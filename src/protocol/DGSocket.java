@@ -654,7 +654,7 @@ public class DGSocket {
 				congwin = 1;
 				acksDuplicados = 0;
 				recuperacaoRapida = false;
-				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 2) || timeoutTries > 30) {
+				if ((!ESTADO.equals("ESTABLISHED") && timeoutTries > 9) || timeoutTries > 30) {
 					System.out.println(socket.getLocalAddress().getHostName() +", " + socket.getLocalPort() + " " +"end host não responde.");
 					connectionRefused = true;
 					close(true);
